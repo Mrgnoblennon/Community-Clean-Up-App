@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 
 app = Flask(__name__)
@@ -38,7 +38,54 @@ def event_details(event_id):
 
 @app.route("/events/<int:event_id>/join", methods=["POST"])
 def join_event(event_id):
-    return "Registration route working!"
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+
+    if not name or not email:
+        return "Name and email are required", 400
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            "SELECT capacity FROM events WHERE id = ?",
+            (event_id,)
+        )
+        event = cursor.fetchone()
+
+        if event is None:
+            return "Event not found", 404
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM registrations WHERE event_id = ?",
+            (event_id,)
+        )
+        registration_count = cursor.fetchone()[0]
+
+        if registration_count >= event[0]:
+            return "This event is fully booked", 400
+
+        cursor.execute("""
+            INSERT INTO registrations (event_id, name, email)
+            VALUES (?, ?, ?)
+        """, (event_id, name, email))
+
+        cursor.execute("""
+            UPDATE events
+            SET registered = registered + 1
+            WHERE id = ?
+        """, (event_id,))
+
+        connection.commit()
+
+    except sqlite3.IntegrityError:
+        return "This email is already registered for this event", 400
+
+    finally:
+        connection.close()
+
+    return redirect(url_for("event_details", event_id=event_id))
 
 if __name__ == "__main__":
     app.run(debug=True)
