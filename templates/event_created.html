@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Created</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <section class="event-card">
+            <h1>Event Created Successfully!</h1>
+            <p>Your community clean-up event has been saved.</p>
+
+            <h2>{{ event.name }}</h2>
+
+            <p><strong>Location:</strong> {{ event.location }}</p>
+            <p><strong>Date:</strong> {{ event.date }}</p>
+            <p><strong>Time:</strong> {{ event.time }}</p>
+            <p><strong>Participant Limit:</strong> {{ event.capacity }}</p>
+
+            <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">
+                View Event
+            </a>
+
+            <a href="{{ url_for('events') }}" class="btn">
+                Browse Events
+            </a>
+
+            <a href="{{ url_for('create_event') }}" class="btn">
+                Create Another Event
+            </a>
+        </section>
+    </main>
+</body>
+</html>

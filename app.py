@@ -111,54 +111,59 @@ def confirmation(event_id):
 
 @app.route("/create-event", methods=["GET", "POST"])
 def create_event():
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        location = request.form.get("location", "").strip()
-        event_date = request.form.get("date", "")
-        time = request.form.get("time", "")
-        description = request.form.get("description", "").strip()
-        equipment = request.form.get("equipment", "").strip()
-        safety_confirmed = request.form.get("safety_confirmed")
+  if request.method == "POST":
+    name = request.form.get("name", "").strip()
+    location = request.form.get("location", "").strip()
+    event_date = request.form.get("date", "")
+    time = request.form.get("time", "")
+    description = request.form.get("description", "").strip()
+    equipment = request.form.get("equipment", "").strip()
+    safety_confirmed = request.form.get("safety_confirmed")
+    try:
+        capacity = int(request.form.get("capacity", "0"))
+        parsed_date = date.fromisoformat(event_date)
+    except ValueError:
+        return "Invalid date or participant limit", 400
+    if not name or not location or not time:
+        return "Please complete all required fields", 400
+    if capacity < 1:
+        return "Participant limit must be at least 1", 400
+    if parsed_date < date.today():
+        return "Event date cannot be in the past", 400
+    if safety_confirmed != "on":
+        return "Safety checklist confirmation is required", 400
+    connection = sqlite3.connect("instance/cleanup.db")
+    cursor = connection.cursor()
+    cursor.execute("""
+        INSERT INTO events
+        (name, location, date, time, capacity,
+         registered, description, equipment, safety_instructions)
+        VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+    """, (
+        name, location, event_date, time, capacity,
+        description, equipment, "Safety checklist reviewed"
+    ))
+    connection.commit()
+    event_id = cursor.lastrowid
+    connection.close()
+    return redirect(url_for("event_created", event_id=event_id))
 
-        try:
-            capacity = int(request.form.get("capacity", "0"))
-            parsed_date = date.fromisoformat(event_date)
-        except ValueError:
-            return "Invalid date or participant limit", 400
+  return render_template("create_event.html")
 
-        if not name or not location or not time:
-            return "Please complete all required fields", 400
+@app.route("/events/<int:event_id>/created")
+def event_created(event_id):
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
 
-        if capacity < 1:
-            return "Participant limit must be at least 1", 400
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+    event = cursor.fetchone()
+    connection.close()
 
-        if parsed_date < date.today():
-            return "Event date cannot be in the past", 400
+    if event is None:
+        return "Event not found", 404
 
-        if safety_confirmed != "on":
-            return "Safety checklist confirmation is required", 400
-
-        connection = sqlite3.connect("instance/cleanup.db")
-        cursor = connection.cursor()
-
-        cursor.execute("""
-            INSERT INTO events
-            (name, location, date, time, capacity,
-             registered, description, equipment, safety_instructions)
-            VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
-        """, (
-            name, location, event_date, time, capacity,
-            description, equipment, "Safety checklist reviewed"
-        ))
-
-        connection.commit()
-        event_id = cursor.lastrowid
-        connection.close()
-
-        return redirect(url_for("event_details", event_id=event_id))
-
-    return render_template("create_event.html")
-
+    return render_template("event_created.html", event=event)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
