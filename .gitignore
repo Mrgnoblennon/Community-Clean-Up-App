@@ -1,0 +1,16 @@
+# Python generated files
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+venv/
+
+# SQLite database
+*.db
+
+# Mac system files
+.DS_Store
+
+# Environment variables and secrets
+.env
