@@ -15,6 +15,9 @@
         <p>Date: {{ event.date }}</p>
         <p>Time: {{ event.time }}</p>
         <p>{{ event.registered }} of {{ event.capacity }} participants registered</p>
+        <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">
+          View Details
+        </a>
       </section>
       {% endfor %}
   </main>
