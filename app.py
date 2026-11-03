@@ -85,7 +85,22 @@ def join_event(event_id):
     finally:
         connection.close()
 
-    return redirect(url_for("event_details", event_id=event_id))
+    return redirect(url_for("confirmation", event_id=event_id))
+
+@app.route("/events/<int:event_id>/confirmation")
+def confirmation(event_id):
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+    event = cursor.fetchone()
+    connection.close()
+
+    if event is None:
+        return "Event not found", 404
+
+    return render_template("confirmation.html", event=event)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

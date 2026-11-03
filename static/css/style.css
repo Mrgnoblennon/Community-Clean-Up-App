@@ -18,6 +18,13 @@ h1 {
   max-width: 430px;
   margin: 0 auto;
 }
+.event-card .btn {
+  margin-top: 15px;
+}
+
+.container > .btn {
+  margin-top: 25px;
+}
 .site-header {
   display: flex;
   flex-direction: column;

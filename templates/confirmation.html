@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Confirmed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <section class="event-card">  
+            <h1>Registration Successful!</h1>
+            <p>You've joined the clean-up event.</p>
+
+            <h2>{{ event.name }}</h2>
+            <p>Date: {{ event.date }}</p>
+            <p>Time: {{ event.time }}</p>
+
+            <a href="{{ url_for('events') }}" class="btn">
+                Back to Events
+            </a>
+        </section>
+    </main>
+</body>
+</html>
