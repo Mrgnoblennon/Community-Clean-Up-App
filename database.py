@@ -14,5 +14,16 @@ cursor.execute("""
     )
 """)
 
+cursor.execute("SELECT COUNT(*) FROM events")
+
+if cursor.fetchone()[0] == 0:
+    cursor.executemany("""
+        INSERT INTO events (name, date, time, registered, capacity)
+        VALUES (?, ?, ?, ?, ?)
+    """, [
+        ("Riverside Park Clean-Up", "2026-10-24", "10:00–12:00", 12, 20),
+        ("Meadow Lane Clean-Up", "2026-11-14", "09:00–11:00", 6, 15)
+    ])
+
 connection.commit()
 connection.close()

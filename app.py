@@ -1,4 +1,5 @@
 from flask import Flask, render_template
+import sqlite3
 
 app = Flask(__name__)
 
@@ -8,29 +9,14 @@ def home():
 
 @app.route("/events")
 def events():
-    cleanup_events = [
-        {
-            "name": "Riverside Park Clean-Up",
-            "date": "24 October 2026",
-            "time": "10:00 AM - 12:00 PM",
-            "registered": 12,
-            "capacity": 20
-        },
-        {
-            "name": "The Esplanade Gathering",
-            "date": "14 November 2026",
-            "time": "9:00 AM - 11:00 AM",
-            "registered": 6,
-            "capacity": 15
-        },
-        {
-            "name": "Fringe Presents: Community",
-            "date": "14 November 2026",
-            "time": "9:00 AM - 11:00 AM",
-            "registered": 6,
-            "capacity": 15
-        }
-    ]
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM events")
+
+    cleanup_events = cursor.fetchall()
+    connection.close()
 
     return render_template("events.html", events=cleanup_events)
 
