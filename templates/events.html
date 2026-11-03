@@ -9,29 +9,14 @@
       <h1>Find Clean-Ups</h1>
       <p>Discover upcoming community clean-up events.</p>
 
+      {% for event in events %}
       <section class="event-card">
-          <h2>Riverside Park Clean-Up</h2>
-          <p>Date: 24 October 2026</p>
-          <p>Time: 10:00 AM – 12:00 PM</p>
-          <p>12 of 20 participants registered</p>
-          <a href="/" class="btn">Back to Home</a>
+        <h2>{{ event.name }}</h2>
+        <p>Date: {{ event.date }}</p>
+        <p>Time: {{ event.time }}</p>
+        <p>{{ event.registered }} of {{ event.capacity }} participants registered</p>
       </section>
-
-      <section class="event-card">
-        <h2>The Esplanade Event</h2>
-        <p>Date: 22 October 2026</p>
-        <p>Time: 9:00 AM – 2:00 PM</p>
-        <p>18 of 20 participants registered</p>
-        <a href="/" class="btn">Back to Home</a>
-      </section>
-
-      <section class="event-card">
-        <h2>Fringe Presents Community Clean-up</h2>
-        <p>Date: 24 October 2026</p>
-        <p>Time: 8:00 AM – 12:00 PM</p>
-        <p>35 of 40 participants registered</p>
-        <a href="/" class="btn">Back to Home</a>
-      </section>
+      {% endfor %}
   </main>
 </body>
 </html>
