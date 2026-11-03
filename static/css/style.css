@@ -18,3 +18,21 @@ h1 {
   max-width: 430px;
   margin: 0 auto;
 }
+.site-header {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px 0;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+nav a {
+  color: #2e7d32;
+  text-decoration: none;
+  font-weight: bold;
+}
