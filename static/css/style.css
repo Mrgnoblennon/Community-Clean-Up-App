@@ -58,3 +58,15 @@ nav a {
 .btn:hover {
   background-color: #1b5e20;
 }
+
+.event-card {
+  background-color: #e8f5e9;
+  padding: 20px;
+  border-radius: 15px;
+  margin-top: 20px;
+}
+
+.event-card h2 {
+  color: #2e7d32;
+  margin-top: 0;
+}
