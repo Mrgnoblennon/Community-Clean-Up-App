@@ -9,21 +9,100 @@
       <h1>Find Clean-Ups</h1>
       <p>Discover upcoming community clean-up events.</p>
 
+      <form action="{{ url_for('events') }}" method="GET">
+        <input
+            type="search"
+            name="search"
+            placeholder="Search clean-up events"
+            value="{{ search }}"
+        >
+        <button type="submit" class="btn">Search</button>
+      </form>
+
+      <label>
+        <input type="checkbox" id="availableOnly">
+        Show events with available spaces only
+      </label>
+
+      <label>
+        <input type="checkbox" id="pastOnly">
+        Show past events only
+      </label>
+
+      <a href="{{ url_for('home') }}" class="btn">
+        Back to Home
+      </a>
+
       {% for event in events %}
-      <section class="event-card">
-        <h2>{{ event.name }}</h2>
-        <p>Date: {{ event.date }}</p>
-        <p>Time: {{ event.time }}</p>
-        <p>{{ event.registered }} of {{ event.capacity }} participants registered</p>
-        <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">
-          View Details
-        </a>
-  
-        <a href="{{ url_for('home') }}" class="btn">
-          Back to Home
-        </a>
-      </section>
+        <section class="event-card"
+           data-registered="{{ event.registered }}"
+           data-capacity="{{ event.capacity }}"
+        >
+          <h2>{{ event.name }}</h2>
+          <p>Date: {{ event.date }}</p>
+          <p>Time: {{ event.time }}</p>
+          <p>{{ event.registered }} of {{ event.capacity }} participants registered</p>
+          <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">
+            View Details
+          </a>
+        </section>
       {% endfor %}
+
+      <script>
+        const searchInput = document.querySelector('input[name="search"]');
+      
+        searchInput.addEventListener("search", function () {
+            if (searchInput.value === "") {
+                window.location.href = "{{ url_for('events') }}";
+            }
+        });
+
+        const availableOnly = document.getElementById("availableOnly");
+        const pastOnly = document.getElementById("pastOnly");
+        const eventCards = document.querySelectorAll(".event-card");
+
+        function filterEvents() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+        
+            eventCards.forEach(function (card) {
+                const registered = Number(card.dataset.registered);
+                const capacity = Number(card.dataset.capacity);
+                const eventDate = new Date(card.dataset.date + "T00:00:00");
+            
+                const isFull = registered >= capacity;
+                const isPast = eventDate < today;
+            
+                let showCard;
+            
+                if (pastOnly.checked) {
+                    showCard = isPast;
+                } else {
+                    showCard = !isPast && (!availableOnly.checked || !isFull);
+                }
+              
+                card.style.display = showCard ? "block" : "none";
+            });
+        }
+
+        pastOnly.addEventListener("change", function () {
+            if (pastOnly.checked) {
+                availableOnly.checked = false;
+            }
+          
+            filterEvents();
+        });
+
+        availableOnly.addEventListener("change", function () {
+            if (availableOnly.checked) {
+                pastOnly.checked = false;
+            }
+          
+            filterEvents();
+        });
+
+        filterEvents();
+      </script>
   </main>
 </body>
 </html>

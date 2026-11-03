@@ -9,16 +9,21 @@ def home():
 
 @app.route("/events")
 def events():
+    search = request.args.get("search", "").strip()
+
     connection = sqlite3.connect("instance/cleanup.db")
     connection.row_factory = sqlite3.Row
-
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM events")
+
+    cursor.execute(
+        "SELECT * FROM events WHERE name LIKE ?",
+        (f"%{search}%",)
+    )
 
     cleanup_events = cursor.fetchall()
     connection.close()
 
-    return render_template("events.html", events=cleanup_events)
+    return render_template("events.html", events=cleanup_events, search=search)
 
 @app.route("/events/<int:event_id>")
 def event_details(event_id):
@@ -89,6 +94,7 @@ def join_event(event_id):
 
 @app.route("/events/<int:event_id>/confirmation")
 def confirmation(event_id):
+  
     connection = sqlite3.connect("instance/cleanup.db")
     connection.row_factory = sqlite3.Row
 
@@ -101,6 +107,15 @@ def confirmation(event_id):
         return "Event not found", 404
 
     return render_template("confirmation.html", event=event)
+
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
