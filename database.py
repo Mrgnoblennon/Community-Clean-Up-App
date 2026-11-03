@@ -25,5 +25,16 @@ if cursor.fetchone()[0] == 0:
         ("Meadow Lane Clean-Up", "2026-11-14", "09:00–11:00", 6, 15)
     ])
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS registrations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        FOREIGN KEY (event_id) REFERENCES events(id),
+        UNIQUE (event_id, email)
+    )
+""")
+
 connection.commit()
 connection.close()

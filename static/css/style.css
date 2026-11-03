@@ -70,3 +70,23 @@ nav a {
   color: #2e7d32;
   margin-top: 0;
 }
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 25px 0;
+}
+
+input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+button.btn {
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}

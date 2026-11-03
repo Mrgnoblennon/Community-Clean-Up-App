@@ -36,5 +36,9 @@ def event_details(event_id):
 
     return render_template("event_details.html", event=event)
 
+@app.route("/events/<int:event_id>/join", methods=["POST"])
+def join_event(event_id):
+    return "Registration route working!"
+
 if __name__ == "__main__":
     app.run(debug=True)
