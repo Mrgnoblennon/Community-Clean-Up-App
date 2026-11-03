@@ -36,5 +36,21 @@ cursor.execute("""
     )
 """)
 
+cursor.execute("PRAGMA table_info(events)")
+columns = [column[1] for column in cursor.fetchall()]
+
+new_columns = {
+    "location": "TEXT",
+    "description": "TEXT",
+    "equipment": "TEXT",
+    "safety_instructions": "TEXT"
+}
+
+for column_name, column_type in new_columns.items():
+    if column_name not in columns:
+        cursor.execute(
+            f"ALTER TABLE events ADD COLUMN {column_name} {column_type}"
+        )
+
 connection.commit()
 connection.close()
