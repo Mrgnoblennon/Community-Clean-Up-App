@@ -114,6 +114,16 @@ def create_event():
   if request.method == "POST":
     name = request.form.get("name", "").strip()
     location = request.form.get("location", "").strip()
+
+    try:
+        latitude = float(request.form.get("latitude", ""))
+        longitude = float(request.form.get("longitude", ""))
+    except (ValueError, TypeError):
+        return "Valid coordinates are required", 400
+
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return "Coordinates are out of range", 400
+    
     event_date = request.form.get("date", "")
     time = request.form.get("time", "")
     description = request.form.get("description", "").strip()
@@ -135,13 +145,13 @@ def create_event():
     connection = sqlite3.connect("instance/cleanup.db")
     cursor = connection.cursor()
     cursor.execute("""
-        INSERT INTO events
-        (name, location, date, time, capacity,
+    INSERT INTO events
+        (name, location, latitude, longitude, date, time, capacity,
          registered, description, equipment, safety_instructions)
-        VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
     """, (
-        name, location, event_date, time, capacity,
-        description, equipment, "Safety checklist reviewed"
+        name, location, latitude, longitude, event_date, time,
+        capacity, description, equipment, "Safety checklist reviewed"
     ))
     connection.commit()
     event_id = cursor.lastrowid

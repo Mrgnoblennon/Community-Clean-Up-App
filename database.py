@@ -43,7 +43,9 @@ new_columns = {
     "location": "TEXT",
     "description": "TEXT",
     "equipment": "TEXT",
-    "safety_instructions": "TEXT"
+    "safety_instructions": "TEXT",
+    "latitude": "REAL",
+    "longitude": "REAL"
 }
 
 for column_name, column_type in new_columns.items():

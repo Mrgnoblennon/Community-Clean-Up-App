@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Clean-Up Event</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
+
 <body>
     <main class="container">
         <h1>Create a Clean-Up Event</h1>
@@ -16,6 +19,12 @@
 
             <label for="location">Location</label>
             <input type="text" id="location" name="location" required>
+            <p>Click the map to choose the clean-up location.</p>
+
+            <div id="location-map" style="height: 350px; width: 100%;"></div>
+
+            <input type="hidden" id="latitude" name="latitude" required>
+            <input type="hidden" id="longitude" name="longitude" required>
 
             <label for="date">Date</label>
             <input type="date" id="date" name="date" required>
@@ -42,5 +51,28 @@
 
         <a href="{{ url_for('events') }}">Back to Events</a>
     </main>
+    <script>
+        const map = L.map("location-map").setView([-31.95, 115.86], 11);
+    
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    
+        let marker;
+    
+        map.on("click", function(event) {
+            const latitude = event.latlng.lat;
+            const longitude = event.latlng.lng;
+    
+            document.getElementById("latitude").value = latitude;
+            document.getElementById("longitude").value = longitude;
+    
+            if (marker) {
+                map.removeLayer(marker);
+            }
+    
+            marker = L.marker([latitude, longitude]).addTo(map);
+        });
+    </script>
 </body>
 </html>
