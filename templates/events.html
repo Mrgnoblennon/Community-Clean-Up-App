@@ -42,6 +42,7 @@
               data-registered="{{ event.registered }}"
               data-capacity="{{ event.capacity }}"
               data-date="{{ event.date }}"
+              data-id="{{ event.id }}"
           >
           <h2>{{ event.name }}</h2>
           <p>Date: {{ event.date }}</p>
@@ -70,6 +71,8 @@
         document.getElementById("events-data").textContent
     );
 
+    const markers = [];
+    
     events.forEach(function(event) {
         const popup = document.createElement("div");
 
@@ -86,9 +89,14 @@
         link.textContent = "View Details";
         popup.appendChild(link);
 
-        L.marker([event.latitude, event.longitude])
+        const marker = L.marker([event.latitude, event.longitude])
             .addTo(map)
             .bindPopup(popup);
+
+        markers.push({
+            marker: marker,
+            eventId: event.id
+        });
     });
 
     // Search functionality
@@ -109,23 +117,34 @@
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        eventCards.forEach(function (card) {
+        eventCards.forEach(function(card) {
             const registered = Number(card.dataset.registered);
             const capacity = Number(card.dataset.capacity);
             const eventDate = new Date(card.dataset.date + "T00:00:00");
-
+        
             const isFull = registered >= capacity;
             const isPast = eventDate < today;
-
-            let showCard;
-
+        
+            let showCard = true;
+        
             if (pastOnly.checked) {
                 showCard = isPast;
-            } else {
-                showCard = !isPast && (!availableOnly.checked || !isFull);
+            } else if (availableOnly.checked) {
+                showCard = !isPast && !isFull;
             }
-
+          
             card.style.display = showCard ? "block" : "none";
+            const eventId = Number(card.dataset.id);
+
+            markers.forEach(function(item) {
+                if (item.eventId === eventId) {
+                    if (showCard) {
+                        item.marker.addTo(map);
+                    } else {
+                        map.removeLayer(item.marker);
+                    }
+                }
+            });
         });
     }
 

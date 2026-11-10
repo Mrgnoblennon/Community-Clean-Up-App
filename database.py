@@ -1,8 +1,14 @@
+
 import sqlite3
+import os
+
+# Ensure the database folder exists
+os.makedirs("instance", exist_ok=True)
 
 connection = sqlite3.connect("instance/cleanup.db")
 cursor = connection.cursor()
 
+# Create events table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,17 +20,7 @@ cursor.execute("""
     )
 """)
 
-cursor.execute("SELECT COUNT(*) FROM events")
-
-if cursor.fetchone()[0] == 0:
-    cursor.executemany("""
-        INSERT INTO events (name, date, time, registered, capacity)
-        VALUES (?, ?, ?, ?, ?)
-    """, [
-        ("Riverside Park Clean-Up", "2026-10-24", "10:00–12:00", 12, 20),
-        ("Meadow Lane Clean-Up", "2026-11-14", "09:00–11:00", 6, 15)
-    ])
-
+# Create registrations table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS registrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,6 +32,7 @@ cursor.execute("""
     )
 """)
 
+# Add missing columns to existing databases
 cursor.execute("PRAGMA table_info(events)")
 columns = [column[1] for column in cursor.fetchall()]
 
@@ -54,5 +51,78 @@ for column_name, column_type in new_columns.items():
             f"ALTER TABLE events ADD COLUMN {column_name} {column_type}"
         )
 
+# Sample clean-up events
+sample_events = [
+    ("South Beach Clean-Up", "South Beach, Fremantle",
+     -32.073, 115.751, "2026-11-14", "09:00", 5, 20,
+     "Beach litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Kings Park Clean-Up", "Kings Park, Perth",
+     -31.961, 115.833, "2026-11-21", "10:00", 30, 30,
+     "Park litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Cottesloe Beach Clean-Up", "Cottesloe Beach",
+     -31.994, 115.751, "2026-11-28", "08:00", 8, 15,
+     "Coastal clean-up", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Swan River Clean-Up", "East Perth Foreshore",
+     -31.953, 115.879, "2026-12-05", "09:00", 0, 25,
+     "Riverbank clean-up", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Bathers Beach Clean-Up", "Bathers Beach, Fremantle",
+     -32.057, 115.744, "2026-11-07", "08:00", 10, 10,
+     "Beach litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Leighton Beach Clean-Up", "Leighton Beach, North Fremantle",
+     -32.029, 115.750, "2026-11-15", "08:00", 12, 20,
+     "Remove litter from the beach", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Point Walter River Clean-Up", "Point Walter, Bicton",
+     -32.011, 115.788, "2026-11-22", "09:00", 25, 25,
+     "Collect rubbish along the Swan River", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Coogee Beach Clean-Up", "Coogee Beach, WA",
+     -32.115, 115.762, "2026-11-29", "07:30", 4, 15,
+     "Beach and dune litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Hyde Park Community Clean-Up", "Hyde Park, Perth",
+     -31.938, 115.863, "2026-12-06", "10:00", 0, 30,
+     "Remove litter from parkland", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Scarborough Beach Clean-Up", "Scarborough Beach, Perth",
+     -31.894, 115.756, "2026-12-12", "08:00", 18, 20,
+     "Coastal litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Manning Park Clean-Up", "Manning Park, Hamilton Hill",
+     -32.091, 115.775, "2026-12-19", "09:00", 15, 15,
+     "Park and bushland clean-up", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Port Beach Clean-Up", "Port Beach, North Fremantle",
+     -32.039, 115.748, "2026-10-18", "08:00", 10, 20,
+     "Beach litter collection", "Gloves and bags", "Safety checklist reviewed"),
+
+    ("Bibra Lake Community Clean-Up", "Bibra Lake, WA",
+     -32.096, 115.821, "2026-10-25", "09:00", 20, 20,
+     "Lakeside rubbish collection", "Gloves and bags", "Safety checklist reviewed")
+]
+
+# Insert sample events only if they don't already exist
+for event in sample_events:
+    cursor.execute(
+        "SELECT id FROM events WHERE name = ?",
+        (event[0],)
+    )
+
+    if cursor.fetchone() is None:
+        cursor.execute("""
+            INSERT INTO events
+            (name, location, latitude, longitude, date, time,
+             registered, capacity, description, equipment,
+             safety_instructions)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, event)
+
 connection.commit()
 connection.close()
+
+print("Database setup complete. Sample events are ready.")
