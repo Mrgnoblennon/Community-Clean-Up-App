@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
-from datetime import date
+from datetime import date, datetime, timedelta
+import secrets
 
 app = Flask(__name__)
+
+verification_codes = {}
 
 @app.route("/")
 def home():
@@ -162,7 +165,65 @@ def edit_registration(registration_id):
 
     finally:
         connection.close()
-        
+
+
+@app.route("/my-registrations", methods=["GET", "POST"])
+def my_registrations():
+
+    if request.method == "POST":
+
+        email = request.form.get("email", "").strip().lower()
+
+        if not email:
+            return "Email address is required", 400
+
+        code = str(secrets.randbelow(900000) + 100000)
+
+        verification_codes[email] = {
+            "code": code,
+            "expires": datetime.now() + timedelta(minutes=10)
+        }
+
+        print(f"Verification code for {email}: {code}")
+
+        return render_template(
+            "my_registrations.html",
+            message="Enter the verification code shown in your VS Code terminal.",
+            show_verification=True,
+            email=email
+        )
+
+    return render_template("my_registrations.html")
+
+@app.route("/verify-registration", methods=["POST"])
+def verify_registration():
+    email = request.form.get("email", "").strip().lower()
+    code = request.form.get("code", "").strip()
+
+    saved = verification_codes.get(email)
+
+    print("Submitted email:", repr(email))
+    print("Submitted code:", repr(code))
+    print("Stored verification:", saved)
+
+    if saved is None:
+        return "No verification code found. Request a new one.", 400
+
+    if datetime.now() > saved["expires"]:
+        verification_codes.pop(email, None)
+        return "Verification code expired. Request a new one.", 400
+
+    if not secrets.compare_digest(code, saved["code"]):
+        return "Incorrect verification code", 400
+
+    # Prevent the same code being reused
+    verification_codes.pop(email, None)
+
+    return render_template(
+        "my_registrations.html",
+        message="Email verified successfully!"
+    )
+
 @app.route("/events/<int:event_id>/confirmation")
 def confirmation(event_id):
   

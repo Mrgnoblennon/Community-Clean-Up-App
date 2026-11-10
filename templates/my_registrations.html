@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Registrations</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <main class="container">
+
+        <h1>My Registrations</h1>
+
+        <p>
+            Enter your email address to access your
+            clean-up event registrations.
+        </p>
+
+        <section class="event-card">
+            <h2>Find Your Registrations</h2>
+
+            <form method="POST"
+                  action="{{ url_for('my_registrations') }}">
+
+                <label for="email">Email Address</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="example@email.com"
+                    value="{{ email or '' }}"
+                    required
+                >
+
+                <button type="submit" class="btn">
+                    Find My Registrations
+                </button>
+            </form>
+        </section>
+
+        {% if message %}
+            <p>{{ message }}</p>
+        {% endif %}
+
+        {% if show_verification %}
+        <section class="event-card">
+            <h2>Verify Your Email</h2>
+
+            <p>Enter the 6-digit verification code.</p>
+
+            <form method="POST"
+                  action="{{ url_for('verify_registration') }}">
+
+                <input type="hidden"
+                       name="email"
+                       value="{{ email }}"
+                >
+
+                <label for="code">Verification Code</label>
+
+                <input
+                    type="text"
+                    id="code"
+                    name="code"
+                    placeholder="Enter 6-digit code"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    inputmode="numeric"
+                    required
+                >
+
+                <button type="submit" class="btn">
+                    Verify Code
+                </button>
+            </form>
+        </section>
+        {% endif %}
+
+        <a href="{{ url_for('home') }}" class="btn">
+            Back to Home
+        </a>
+
+    </main>
+</body>
+</html>
