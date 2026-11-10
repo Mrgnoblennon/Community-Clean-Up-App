@@ -86,7 +86,13 @@ def join_event(event_id):
         )
         registration_count = cursor.fetchone()[0]
 
-        if registration_count >= event[0]:
+        cursor.execute(
+            "SELECT registered FROM events WHERE id = ?",
+            (event_id,)
+        )
+        registered = cursor.fetchone()[0]
+
+        if registered >= event[0]:
             return "This event is fully booked", 400
 
         cursor.execute("""
@@ -110,6 +116,53 @@ def join_event(event_id):
 
     return redirect(url_for("confirmation", event_id=event_id))
 
+@app.route("/registrations/<int:registration_id>/edit", methods=["GET", "POST"])
+def edit_registration(registration_id):
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            "SELECT * FROM registrations WHERE id = ?",
+            (registration_id,)
+        )
+        registration = cursor.fetchone()
+
+        if registration is None:
+            return "Registration not found", 404
+
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            email = request.form.get("email", "").strip().lower()
+
+            if not name or not email:
+                return "Name and email are required", 400
+
+            try:
+                cursor.execute("""
+                    UPDATE registrations
+                    SET name = ?, email = ?
+                    WHERE id = ?
+                """, (name, email, registration_id))
+
+                connection.commit()
+
+            except sqlite3.IntegrityError:
+                return "Email already registered for this event", 400
+
+            return redirect(
+                url_for("edit_registration", registration_id=registration_id)
+            )
+
+        return render_template(
+            "edit_registration.html",
+            registration=registration
+        )
+
+    finally:
+        connection.close()
+        
 @app.route("/events/<int:event_id>/confirmation")
 def confirmation(event_id):
   
