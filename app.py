@@ -121,19 +121,27 @@ def join_event(event_id):
 
 @app.route("/registrations/<int:registration_id>/edit", methods=["GET", "POST"])
 def edit_registration(registration_id):
+    verified_email = session.get("verified_email")
+
+    if not verified_email:
+        return redirect(url_for("my_registrations"))
+
     connection = sqlite3.connect("instance/cleanup.db")
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
 
     try:
-        cursor.execute(
-            "SELECT * FROM registrations WHERE id = ?",
-            (registration_id,)
-        )
+        # Only retrieve registrations belonging to the verified email
+        cursor.execute("""
+            SELECT *
+            FROM registrations
+            WHERE id = ? AND LOWER(email) = ?
+        """, (registration_id, verified_email))
+
         registration = cursor.fetchone()
 
         if registration is None:
-            return "Registration not found", 404
+            return "Registration not found or access denied", 403
 
         if request.method == "POST":
             name = request.form.get("name", "").strip()
@@ -142,21 +150,37 @@ def edit_registration(registration_id):
             if not name or not email:
                 return "Name and email are required", 400
 
+            # Prevent duplicate registrations for the same event
+            cursor.execute("""
+                SELECT id
+                FROM registrations
+                WHERE event_id = ?
+                  AND LOWER(email) = ?
+                  AND id != ?
+            """, (registration["event_id"], email, registration_id))
+
+            if cursor.fetchone():
+                return "Email already registered for this event", 400
+
+            # Update only the verified participant's registration
             try:
                 cursor.execute("""
                     UPDATE registrations
                     SET name = ?, email = ?
-                    WHERE id = ?
-                """, (name, email, registration_id))
+                    WHERE id = ? AND LOWER(email) = ?
+                """, (name, email, registration_id, verified_email))
 
                 connection.commit()
 
             except sqlite3.IntegrityError:
                 return "Email already registered for this event", 400
 
-            return redirect(
-                url_for("edit_registration", registration_id=registration_id)
-            )
+            # A changed email must be verified again
+            if email != verified_email:
+                session.pop("verified_email", None)
+                return redirect(url_for("my_registrations"))
+
+            return redirect(url_for("my_registrations", updated=1))
 
         return render_template(
             "edit_registration.html",
@@ -165,7 +189,6 @@ def edit_registration(registration_id):
 
     finally:
         connection.close()
-
 
 @app.route("/my-registrations", methods=["GET", "POST"])
 def my_registrations():
@@ -191,7 +214,6 @@ def my_registrations():
             message="Enter the verification code shown in your VS Code terminal.",
             show_verification=True,
             email=email,
-            code = code 
         )
 
     verified_email = session.get("verified_email")
@@ -222,8 +244,11 @@ def my_registrations():
         return render_template(
             "my_registrations.html",
             my_events=my_events,
-            message="Registration cancelled successfully!"
-            if request.args.get("cancelled") == "1" else None
+            message=(
+                "Registration updated successfully!"
+                if request.args.get("updated") == "1"
+                else None
+            )
         )
 
     return render_template("my_registrations.html")

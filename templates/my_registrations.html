@@ -88,6 +88,10 @@
                     >
                         View Event
                     </a>
+                    <a href="{{ url_for('edit_registration', registration_id=event.registration_id) }}"
+                        class="btn">
+                         Edit Registration
+                    </a>                   
                     <a href="{{ url_for('confirm_cancellation', registration_id=event.registration_id) }}"
                         class="btn">
                             Cancel Registration

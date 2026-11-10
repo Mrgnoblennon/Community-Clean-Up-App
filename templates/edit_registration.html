@@ -1,33 +1,68 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Edit Registration</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Edit Registration</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-    <h1>Edit Registration</h1>
+    <main class="container">
 
-    <form method="POST">
-        <label for="name">Name</label>
-        <input
-            type="text"
-            id="name"
-            name="name"
-            value="{{ registration.name }}"
-            required
-        >
+        <header class="brand-header">
+            <a href="{{ url_for('home') }}">
+                <img
+                    src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="Cleaning Up Communities logo"
+                    class="brand-logo"
+                    style="max-width: 150px;"
+                >
+            </a>
+        </header>
 
-        <label for="email">Email</label>
-        <input
-            type="email"
-            id="email"
-            name="email"
-            value="{{ registration.email }}"
-            required
-        >
+        <h1>Edit Registration</h1>
 
-        <button type="submit">Save Changes</button>
-    </form>
+        <p>Update your clean-up registration details below.</p>
+
+        <section class="event-card">
+            <h2>Your Details</h2>
+
+            <form method="POST">
+
+                <label for="name">Name</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value="{{ registration.name }}"
+                    required
+                >
+
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value="{{ registration.email }}"
+                    required
+                >
+
+                <button type="submit" class="btn">
+                    Save Changes
+                </button>
+
+            </form>
+        </section>
+
+        <a href="{{ url_for('my_registrations') }}" class="btn">
+            Back to My Registrations
+        </a>
+
+    </main>
 </body>
 </html>
