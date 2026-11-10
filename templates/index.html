@@ -8,6 +8,16 @@
 </head>
 <body>
 <main class="container">
+  <header class="brand-header">
+    <a href="{{ url_for('home') }}">
+        <img
+            src="{{ url_for('static', filename='images/logo.png') }}"
+            alt="Cleaning Up Communities logo"
+            class="brand-logo"
+            style="max-width: 200px;"
+        >
+    </a>
+  </header>
   <header class="site-header">
     <div class="logo">Community Clean-Up</div>
     <nav>

@@ -11,6 +11,15 @@
 
 <body>
     <main class="container">
+        <header class="brand-header">
+            <a href="{{ url_for('home') }}">
+                <img
+                    src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="Cleaning Up Communities"
+                    class="brand-logo"
+                >
+            </a>
+        </header>
         <h1>Create a Clean-Up Event</h1>
 
         <form method="POST">

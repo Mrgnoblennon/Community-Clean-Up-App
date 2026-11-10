@@ -1,33 +1,100 @@
+
+/* =====================================
+   CLEANING UP COMMUNITIES
+   Soft Green Arcade Theme
+===================================== */
+
+:root {
+  --background: #F4F8EB;
+  --surface: #FFFFFF;
+  --surface-green: #EEF6E5;
+  --sage: #DCEEC9;
+  --lime: #A9DB86;
+  --grass: #79B65E;
+  --green: #45864D;
+  --dark-green: #365E3D;
+  --text: #365E3D;
+  --muted: #6A856B;
+  --border: #D4E4CB;
+  --shadow: #79B65E;
+}
+
+/* GLOBAL */
+
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f5f5f5;
   margin: 0;
   padding: 20px;
-}
-
-h1 {
-  color: #2e7d32;
+  font-family: Arial, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  line-height: 1.5;
 }
 
 .container {
   width: 100%;
-  max-width: 430px;
+  max-width: 800px;
   margin: 0 auto;
 }
-.event-card .btn {
-  margin-top: 15px;
+
+h1, h2, h3 {
+  color: var(--dark-green);
+  line-height: 1.2;
 }
 
-.container > .btn {
-  margin-top: 25px;
+h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 900;
+  letter-spacing: -1px;
 }
+
+h2 {
+  font-size: 24px;
+}
+
+p {
+  color: var(--muted);
+}
+
+a {
+  color: var(--green);
+}
+
+/* BRANDING */
+
+.brand-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px 0 25px;
+}
+
+.brand-header a {
+  display: block;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  height: auto;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.brand-logo:hover {
+  transform: scale(1.04);
+}
+
+/* HEADER AND NAVIGATION */
+
 .site-header {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 15px;
   padding: 20px 0;
 }
@@ -35,48 +102,100 @@ h1 {
 nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  justify-content: center;
+  gap: 12px;
 }
 
 nav a {
-  color: #2e7d32;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--dark-green);
   text-decoration: none;
   font-weight: bold;
+  transition: 0.2s ease;
 }
 
-.home-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 30px;
+nav a:hover {
+  background: var(--sage);
+  transform: translateY(-2px);
 }
 
-.btn {
-  display: block;
-  padding: 15px;
-  background-color: #2e7d32;
-  color: white;
-  text-align: center;
-  text-decoration: none;
-  border-radius: 25px;
-  font-weight: bold;
-}
-
-.btn:hover {
-  background-color: #1b5e20;
-}
+/* CARDS */
 
 .event-card {
-  background-color: #e8f5e9;
-  padding: 20px;
-  border-radius: 15px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
   margin-top: 20px;
+  box-shadow: 0 5px 0 var(--border);
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 0 var(--border);
 }
 
 .event-card h2 {
-  color: #2e7d32;
   margin-top: 0;
+  color: var(--dark-green);
 }
+
+.event-card p {
+  margin: 10px 0;
+}
+
+.event-card .btn {
+  margin-top: 15px;
+}
+
+/* BUTTONS */
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+
+  background: var(--lime);
+  color: var(--dark-green);
+
+  border: 2px solid var(--grass);
+  border-bottom: 5px solid var(--grass);
+  border-radius: 14px;
+
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+
+  cursor: pointer;
+  transition: transform 0.15s ease,
+              background 0.15s ease;
+}
+
+.btn:hover {
+  background: #BCE99D;
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.container > .btn {
+  margin-top: 25px;
+}
+
+button.btn {
+  font-family: inherit;
+}
+
+/* FORMS */
 
 form {
   display: flex;
@@ -85,15 +204,120 @@ form {
   margin: 25px 0;
 }
 
-input {
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 16px;
+label {
+  color: var(--dark-green);
+  font-weight: 700;
 }
 
-button.btn {
-  border: none;
-  cursor: pointer;
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 13px 15px;
+
+  background: var(--surface);
+  color: var(--text);
+
+  border: 2px solid var(--border);
+  border-radius: 12px;
+
+  font-family: inherit;
   font-size: 16px;
+
+  transition: border-color 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--grass);
+  box-shadow: 0 0 0 3px var(--sage);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  accent-color: var(--green);
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* HOME PAGE */
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* MAPS */
+
+#events-map,
+#create-map {
+  border: 3px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 5px 0 var(--border);
+}
+
+/* STATUS MESSAGES */
+
+.success-message {
+  padding: 15px;
+  background: var(--sage);
+  border: 2px solid var(--grass);
+  border-radius: 12px;
+  color: var(--dark-green);
+  font-weight: bold;
+}
+
+.error-message {
+  padding: 15px;
+  background: #FFF0ED;
+  border: 2px solid #E9A79B;
+  border-radius: 12px;
+  color: #9A453A;
+}
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+  body {
+      padding: 15px;
+  }
+
+  .container {
+      max-width: 100%;
+  }
+
+  .brand-logo {
+      max-width: 190px;
+  }
+
+  .event-card {
+      padding: 18px;
+      border-radius: 16px;
+  }
+
+  nav {
+      gap: 8px;
+  }
+
+  nav a {
+      padding: 9px 12px;
+      font-size: 14px;
+  }
+
+  h1 {
+      font-size: 30px;
+  }
+
+  h2 {
+      font-size: 21px;
+  }
 }
