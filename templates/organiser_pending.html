@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Approval Pending</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <main class="container confirmation-page">
+
+        <header class="brand-header">
+            <a href="{{ url_for('home') }}">
+                <img
+                    src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="Cleaning Up Communities logo"
+                    class="brand-logo"
+                    style="max-width: 150px;"
+                >
+            </a>
+        </header>
+
+        <section class="event-card">
+            <h1>Application Received!</h1>
+
+            <p>
+                Your organiser account has been created
+                successfully.
+            </p>
+
+            <p>
+                Your account is currently awaiting approval.
+                Once approved, you'll be able to create
+                community clean-up events.
+            </p>
+
+            <a href="{{ url_for('home') }}" class="btn">
+                Back to Home
+            </a>
+        </section>
+
+    </main>
+</body>
+</html>

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from datetime import date, datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 import secrets, os , sqlite3
  
 app = Flask(__name__)
@@ -408,54 +409,68 @@ def confirmation(event_id):
 
 @app.route("/create-event", methods=["GET", "POST"])
 def create_event():
-  if request.method == "POST":
-    name = request.form.get("name", "").strip()
-    location = request.form.get("location", "").strip()
+    organiser_id = session.get("organiser_id")  
+    if not organiser_id:
+        return redirect(url_for("organiser_login")) 
+    connection = sqlite3.connect("instance/cleanup.db") 
+    organiser = connection.execute("""
+        SELECT id FROM users
+        WHERE id = ?
+          AND role = 'organiser'
+          AND approved = 1
+    """, (organiser_id,)).fetchone()    
+    connection.close()  
+    if organiser is None:
+        session.pop("organiser_id", None)
+        return redirect(url_for("organiser_login"))
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        location = request.form.get("location", "").strip()
 
-    try:
-        latitude = float(request.form.get("latitude", ""))
-        longitude = float(request.form.get("longitude", ""))
-    except (ValueError, TypeError):
-        return "Valid coordinates are required", 400
+        try:
+            latitude = float(request.form.get("latitude", ""))
+            longitude = float(request.form.get("longitude", ""))
+        except (ValueError, TypeError):
+            return "Valid coordinates are required", 400
 
-    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-        return "Coordinates are out of range", 400
-    
-    event_date = request.form.get("date", "")
-    time = request.form.get("time", "")
-    description = request.form.get("description", "").strip()
-    equipment = request.form.get("equipment", "").strip()
-    safety_confirmed = request.form.get("safety_confirmed")
-    try:
-        capacity = int(request.form.get("capacity", "0"))
-        parsed_date = date.fromisoformat(event_date)
-    except ValueError:
-        return "Invalid date or participant limit", 400
-    if not name or not location or not time:
-        return "Please complete all required fields", 400
-    if capacity < 1:
-        return "Participant limit must be at least 1", 400
-    if parsed_date < date.today():
-        return "Event date cannot be in the past", 400
-    if safety_confirmed != "on":
-        return "Safety checklist confirmation is required", 400
-    connection = sqlite3.connect("instance/cleanup.db")
-    cursor = connection.cursor()
-    cursor.execute("""
-    INSERT INTO events
-        (name, location, latitude, longitude, date, time, capacity,
-         registered, description, equipment, safety_instructions)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
-    """, (
-        name, location, latitude, longitude, event_date, time,
-        capacity, description, equipment, "Safety checklist reviewed"
-    ))
-    connection.commit()
-    event_id = cursor.lastrowid
-    connection.close()
-    return redirect(url_for("event_created", event_id=event_id))
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            return "Coordinates are out of range", 400
+        
+        event_date = request.form.get("date", "")
+        time = request.form.get("time", "")
+        description = request.form.get("description", "").strip()
+        equipment = request.form.get("equipment", "").strip()
+        safety_confirmed = request.form.get("safety_confirmed")
+        try:
+            capacity = int(request.form.get("capacity", "0"))
+            parsed_date = date.fromisoformat(event_date)
+        except ValueError:
+            return "Invalid date or participant limit", 400
+        if not name or not location or not time:
+            return "Please complete all required fields", 400
+        if capacity < 1:
+            return "Participant limit must be at least 1", 400
+        if parsed_date < date.today():
+            return "Event date cannot be in the past", 400
+        if safety_confirmed != "on":
+            return "Safety checklist confirmation is required", 400
+        connection = sqlite3.connect("instance/cleanup.db")
+        cursor = connection.cursor()
+        cursor.execute("""
+        INSERT INTO events
+            (name, location, latitude, longitude, date, time, capacity,
+            registered, description, equipment, safety_instructions)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+        """, (
+            name, location, latitude, longitude, event_date, time,
+            capacity, description, equipment, "Safety checklist reviewed"
+        ))
+        connection.commit()
+        event_id = cursor.lastrowid
+        connection.close()
+        return redirect(url_for("event_created", event_id=event_id))
 
-  return render_template("create_event.html")
+    return render_template("create_event.html")
 
 @app.route("/events/<int:event_id>/created")
 def event_created(event_id):
@@ -472,5 +487,71 @@ def event_created(event_id):
 
     return render_template("event_created.html", event=event)
 
+@app.route("/register-organiser", methods=["GET", "POST"])
+def register_organiser():
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not name or not email or not password:
+            return "All fields are required", 400
+
+        if len(password) < 8:
+            return "Password must be at least 8 characters", 400
+
+        password_hash = generate_password_hash(password)
+
+        connection = sqlite3.connect("instance/cleanup.db")
+
+        try:
+            connection.execute("""
+                INSERT INTO users
+                    (name, email, password_hash, role, approved)
+                VALUES (?, ?, ?, 'organiser', 0)
+            """, (name, email, password_hash))
+
+            connection.commit()
+
+        except sqlite3.IntegrityError:
+            return "An account with this email already exists", 400
+
+        finally:
+            connection.close()
+
+        return render_template("organiser_pending.html")
+
+    return render_template("register_organiser.html")
+
+@app.route("/organiser-login", methods=["GET", "POST"])
+def organiser_login():
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        connection = sqlite3.connect("instance/cleanup.db")
+        connection.row_factory = sqlite3.Row
+
+        user = connection.execute("""
+            SELECT * FROM users
+            WHERE email = ? AND role = 'organiser'
+        """, (email,)).fetchone()
+
+        connection.close()
+
+        if user is None or not check_password_hash(user["password_hash"], password):
+            return "Incorrect email or password", 401
+
+        if not user["approved"]:
+            return render_template("organiser_pending.html")
+
+        session.clear()
+        session["organiser_id"] = user["id"]
+
+        return redirect(url_for("create_event"))
+
+    return render_template("organiser_login.html")
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

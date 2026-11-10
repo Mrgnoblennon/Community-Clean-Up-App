@@ -32,6 +32,21 @@ cursor.execute("""
     )
 """)
 
+# Create users table for organiser accounts
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'participant'
+            CHECK (role IN ('participant', 'organiser')),
+        approved INTEGER NOT NULL DEFAULT 0
+            CHECK (approved IN (0, 1)),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
 # Add missing columns to existing databases
 cursor.execute("PRAGMA table_info(events)")
 columns = [column[1] for column in cursor.fetchall()]
@@ -125,4 +140,4 @@ for event in sample_events:
 connection.commit()
 connection.close()
 
-print("Database setup complete. Sample events are ready.")
+print("Database setup complete. Users table and sample events are ready.")
