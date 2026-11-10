@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Cancellation Successful</title>
+</head>
+<body>
+    <main class="container confirmation-page">
+        <h1>Registration Cancelled!</h1>
+        <p>Your registration has been successfully cancelled.</p>
+
+        <div class="confirmation-actions">
+            <a href="{{ url_for('my_registrations') }}" class="btn">
+                My Registrations
+            </a>
+
+            <a href="{{ url_for('events') }}" class="btn">
+                Browse Events
+            </a>
+        </div>
+    </main>
+</body>
+</html>

@@ -2,6 +2,7 @@
 /* =====================================
    CLEANING UP COMMUNITIES
    Soft Green Arcade Theme
+   Mobile-Friendly Design
 ===================================== */
 
 :root {
@@ -25,19 +26,38 @@
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+  scroll-padding-bottom: 100px;
+}
+
 body {
   margin: 0;
-  padding: 20px;
+  padding: 20px 20px 100px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+
   font-family: Arial, sans-serif;
   background-color: var(--background);
   color: var(--text);
   line-height: 1.5;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+main.container {
+  padding-bottom: 120px;
 }
 
 .container {
   width: 100%;
   max-width: 800px;
+  height: auto;
+  max-height: none;
   margin: 0 auto;
+  padding-bottom: 40px;
 }
 
 h1, h2, h3 {
@@ -69,7 +89,7 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 15px 0 25px;
+  padding: 10px 0 15px;
 }
 
 .brand-header a {
@@ -79,7 +99,7 @@ a {
 .brand-logo {
   display: block;
   width: 100%;
-  max-width: 250px;
+  max-width: 150px;
   height: auto;
   object-fit: contain;
   transition: transform 0.2s ease;
@@ -131,8 +151,10 @@ nav a:hover {
   padding: 24px;
   margin-top: 20px;
   box-shadow: 0 5px 0 var(--border);
-  transition: transform 0.2s ease,
-              box-shadow 0.2s ease;
+
+  transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
 }
 
 .event-card:hover {
@@ -158,6 +180,7 @@ nav a:hover {
 .btn {
   display: block;
   width: 100%;
+  min-height: 48px;
   padding: 14px 20px;
 
   background: var(--lime);
@@ -167,14 +190,17 @@ nav a:hover {
   border-bottom: 5px solid var(--grass);
   border-radius: 14px;
 
+  font-family: inherit;
   font-size: 16px;
   font-weight: 800;
   text-align: center;
   text-decoration: none;
 
   cursor: pointer;
-  transition: transform 0.15s ease,
-              background 0.15s ease;
+
+  transition:
+      transform 0.15s ease,
+      background 0.15s ease;
 }
 
 .btn:hover {
@@ -189,10 +215,6 @@ nav a:hover {
 
 .container > .btn {
   margin-top: 25px;
-}
-
-button.btn {
-  font-family: inherit;
 }
 
 /* FORMS */
@@ -284,15 +306,43 @@ textarea {
   color: #9A453A;
 }
 
+/* CONFIRMATION PAGES */
+
+.confirmation-page {
+  padding-top: 48px;
+  padding-bottom: 60px;
+  text-align: center;
+}
+
+.confirmation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.confirmation-actions form {
+  width: 100%;
+  margin: 0;
+}
+
+.confirmation-actions .btn,
+.confirmation-actions button {
+  width: 100%;
+}
+
 /* MOBILE */
 
 @media (max-width: 600px) {
+
   body {
-      padding: 15px;
+      padding: 15px 15px
+          calc(100px + env(safe-area-inset-bottom, 0px));
   }
 
   .container {
       max-width: 100%;
+      padding-bottom: 50px;
   }
 
   .brand-logo {
@@ -319,5 +369,19 @@ textarea {
 
   h2 {
       font-size: 21px;
+  }
+
+  .confirmation-page {
+      padding-top: 28px;
+      padding-bottom: 60px;
+  }
+
+  .confirmation-actions {
+      gap: 12px;
+  }
+
+  #events-map,
+  #create-map {
+      max-width: 100%;
   }
 }

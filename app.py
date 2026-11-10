@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session
 from datetime import date, datetime, timedelta
-import secrets
-
+import secrets, os , sqlite3
+ 
 app = Flask(__name__)
 
 verification_codes = {}
+app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
 @app.route("/")
 def home():
@@ -190,10 +190,72 @@ def my_registrations():
             "my_registrations.html",
             message="Enter the verification code shown in your VS Code terminal.",
             show_verification=True,
-            email=email
+            email=email,
+            code = code 
+        )
+
+    verified_email = session.get("verified_email")
+
+    if verified_email:
+        connection = sqlite3.connect("instance/cleanup.db")
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                registrations.id AS registration_id,
+                registrations.name AS participant_name,
+                events.id AS event_id,
+                events.name AS event_name,
+                events.date,
+                events.time,
+                events.location
+            FROM registrations
+            JOIN events ON registrations.event_id = events.id
+            WHERE LOWER(registrations.email) = ?
+            ORDER BY events.date ASC
+        """, (verified_email,))
+
+        my_events = [dict(row) for row in cursor.fetchall()]
+        connection.close()
+
+        return render_template(
+            "my_registrations.html",
+            my_events=my_events,
+            message="Registration cancelled successfully!"
+            if request.args.get("cancelled") == "1" else None
         )
 
     return render_template("my_registrations.html")
+
+@app.route("/registrations/<int:registration_id>/confirm-cancel")
+def confirm_cancellation(registration_id):
+    verified_email = session.get("verified_email")
+
+    if not verified_email:
+        return redirect(url_for("my_registrations"))
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    registration = connection.execute("""
+        SELECT events.name AS event_name
+        FROM registrations
+        JOIN events ON registrations.event_id = events.id
+        WHERE registrations.id = ?
+        AND LOWER(registrations.email) = ?
+    """, (registration_id, verified_email)).fetchone()
+
+    connection.close()
+
+    if registration is None:
+        return "Registration not found or access denied.", 403
+
+    return render_template(
+        "confirm_cancellation.html",
+        registration_id=registration_id,
+        event_name=registration["event_name"]
+    )
 
 @app.route("/verify-registration", methods=["POST"])
 def verify_registration():
@@ -218,6 +280,8 @@ def verify_registration():
 
     # Prevent the same code being reused
     verification_codes.pop(email, None)
+
+    session["verified_email"] = email
 
     # Retrieve events belonging to the verified email
     connection = sqlite3.connect("instance/cleanup.db")
@@ -249,6 +313,58 @@ def verify_registration():
         message="Email verified successfully!",
         my_events=my_events
     )
+
+@app.route("/registrations/<int:registration_id>/cancel", methods=["POST"])
+def cancel_registration(registration_id):
+
+    verified_email = session.get("verified_email")
+
+    if not verified_email:
+        return "Please verify your email first.", 403
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    cursor = connection.cursor()
+
+    # Find the registration belonging to the verified email
+    cursor.execute("""
+        SELECT event_id
+        FROM registrations
+        WHERE id = ? AND LOWER(email) = ?
+    """, (registration_id, verified_email))
+
+    registration = cursor.fetchone()
+
+    if registration is None:
+        connection.close()
+        return "Registration not found or access denied.", 403
+
+    event_id = registration[0]
+
+    # Delete the registration
+    cursor.execute("""
+        DELETE FROM registrations
+        WHERE id = ? AND LOWER(email) = ?
+    """, (registration_id, verified_email))
+
+    # Update the event's registered count
+    cursor.execute("""
+        UPDATE events
+        SET registered = MAX(0, registered - 1)
+        WHERE id = ?
+    """, (event_id,))
+
+    connection.commit()
+    connection.close()
+
+    return redirect(url_for("cancellation_success"))
+
+@app.route("/cancellation-success")
+def cancellation_success():
+    if not session.get("verified_email"):
+        return redirect(url_for("my_registrations"))
+
+    return render_template("cancellation_success.html")
+
 @app.route("/events/<int:event_id>/confirmation")
 def confirmation(event_id):
   
