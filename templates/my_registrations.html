@@ -48,6 +48,46 @@
             <p>{{ message }}</p>
         {% endif %}
 
+
+        {% if my_events is defined %}
+
+        <h2>My Clean-Up Missions</h2>
+
+        {% if my_events %}
+
+            {% for event in my_events %}
+                <section class="event-card">
+
+                    <h2>{{ event.event_name }}</h2>
+
+                    <p><strong>Date:</strong> {{ event.date }}</p>
+
+                    <p><strong>Time:</strong> {{ event.time }}</p>
+
+                    <p><strong>Location:</strong> {{ event.location }}</p>
+
+                    <p>
+                        <strong>Registered as:</strong>
+                        {{ event.participant_name }}
+                    </p>
+
+                    <a
+                        href="{{ url_for('event_details', event_id=event.event_id) }}"
+                        class="btn"
+                    >
+                        View Event
+                    </a>
+
+                </section>
+            {% endfor %}
+
+        {% else %}
+            <p>You haven't registered for any clean-up events yet.</p>
+        {% endif %}
+
+        {% endif %}
+
+
         {% if show_verification %}
         <section class="event-card">
             <h2>Verify Your Email</h2>

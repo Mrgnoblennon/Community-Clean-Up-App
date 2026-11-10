@@ -219,11 +219,36 @@ def verify_registration():
     # Prevent the same code being reused
     verification_codes.pop(email, None)
 
+    # Retrieve events belonging to the verified email
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            registrations.id AS registration_id,
+            registrations.name AS participant_name,
+            events.id AS event_id,
+            events.name AS event_name,
+            events.date,
+            events.time,
+            events.location
+        FROM registrations
+        JOIN events
+            ON registrations.event_id = events.id
+        WHERE registrations.email = ?
+        ORDER BY events.date ASC
+    """, (email,))
+
+    my_events = [dict(row) for row in cursor.fetchall()]
+
+    connection.close()
+
     return render_template(
         "my_registrations.html",
-        message="Email verified successfully!"
+        message="Email verified successfully!",
+        my_events=my_events
     )
-
 @app.route("/events/<int:event_id>/confirmation")
 def confirmation(event_id):
   
