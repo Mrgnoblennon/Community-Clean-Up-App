@@ -23,8 +23,25 @@ def events():
 
     cleanup_events = cursor.fetchall()
     connection.close()
+    map_events = []
 
-    return render_template("events.html", events=cleanup_events, search=search)
+    for event in cleanup_events:
+        if event["latitude"] is not None and event["longitude"] is not None:
+            map_events.append({
+                "id": event["id"],
+                "name": event["name"],
+                "date": event["date"],
+                "latitude": event["latitude"],
+                "longitude": event["longitude"],
+                "url": url_for("event_details", event_id=event["id"])
+            })
+
+    return render_template(
+        "events.html",
+        events=cleanup_events,
+        search=search,
+        map_events=map_events
+    )
 
 @app.route("/events/<int:event_id>")
 def event_details(event_id):

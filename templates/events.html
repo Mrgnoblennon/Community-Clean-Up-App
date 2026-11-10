@@ -3,11 +3,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Find Clean-Ups</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <main class="container">
       <h1>Find Clean-Ups</h1>
       <p>Discover upcoming community clean-up events.</p>
+
+      <div id="events-map" style="height: 400px; width: 100%;"></div>
 
       <form action="{{ url_for('events') }}" method="GET">
         <input
@@ -34,10 +38,11 @@
       </a>
 
       {% for event in events %}
-        <section class="event-card"
-           data-registered="{{ event.registered }}"
-           data-capacity="{{ event.capacity }}"
-        >
+          <section class="event-card"
+              data-registered="{{ event.registered }}"
+              data-capacity="{{ event.capacity }}"
+              data-date="{{ event.date }}"
+          >
           <h2>{{ event.name }}</h2>
           <p>Date: {{ event.date }}</p>
           <p>Time: {{ event.time }}</p>
@@ -48,61 +53,98 @@
         </section>
       {% endfor %}
 
-      <script>
-        const searchInput = document.querySelector('input[name="search"]');
-      
-        searchInput.addEventListener("search", function () {
-            if (searchInput.value === "") {
-                window.location.href = "{{ url_for('events') }}";
-            }
-        });
+<!-- Convert Flask event data into JSON -->
+<script id="events-data" type="application/json">
+    {{ map_events | tojson }}
+</script>
 
-        const availableOnly = document.getElementById("availableOnly");
-        const pastOnly = document.getElementById("pastOnly");
-        const eventCards = document.querySelectorAll(".event-card");
+<script>
+    // Initialise map
+    const map = L.map("events-map").setView([-31.95, 115.86], 11);
 
-        function filterEvents() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-        
-            eventCards.forEach(function (card) {
-                const registered = Number(card.dataset.registered);
-                const capacity = Number(card.dataset.capacity);
-                const eventDate = new Date(card.dataset.date + "T00:00:00");
-            
-                const isFull = registered >= capacity;
-                const isPast = eventDate < today;
-            
-                let showCard;
-            
-                if (pastOnly.checked) {
-                    showCard = isPast;
-                } else {
-                    showCard = !isPast && (!availableOnly.checked || !isFull);
-                }
-              
-                card.style.display = showCard ? "block" : "none";
-            });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    const events = JSON.parse(
+        document.getElementById("events-data").textContent
+    );
+
+    events.forEach(function(event) {
+        const popup = document.createElement("div");
+
+        const title = document.createElement("strong");
+        title.textContent = event.name;
+        popup.appendChild(title);
+
+        const date = document.createElement("p");
+        date.textContent = "Date: " + event.date;
+        popup.appendChild(date);
+
+        const link = document.createElement("a");
+        link.href = event.url;
+        link.textContent = "View Details";
+        popup.appendChild(link);
+
+        L.marker([event.latitude, event.longitude])
+            .addTo(map)
+            .bindPopup(popup);
+    });
+
+    // Search functionality
+    const searchInput = document.querySelector('input[name="search"]');
+
+    searchInput.addEventListener("search", function () {
+        if (searchInput.value === "") {
+            window.location.href = "{{ url_for('events') }}";
         }
+    });
 
-        pastOnly.addEventListener("change", function () {
+    // Event filtering
+    const availableOnly = document.getElementById("availableOnly");
+    const pastOnly = document.getElementById("pastOnly");
+    const eventCards = document.querySelectorAll(".event-card");
+
+    function filterEvents() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        eventCards.forEach(function (card) {
+            const registered = Number(card.dataset.registered);
+            const capacity = Number(card.dataset.capacity);
+            const eventDate = new Date(card.dataset.date + "T00:00:00");
+
+            const isFull = registered >= capacity;
+            const isPast = eventDate < today;
+
+            let showCard;
+
             if (pastOnly.checked) {
-                availableOnly.checked = false;
+                showCard = isPast;
+            } else {
+                showCard = !isPast && (!availableOnly.checked || !isFull);
             }
-          
-            filterEvents();
-        });
 
-        availableOnly.addEventListener("change", function () {
-            if (availableOnly.checked) {
-                pastOnly.checked = false;
-            }
-          
-            filterEvents();
+            card.style.display = showCard ? "block" : "none";
         });
+    }
 
+    pastOnly.addEventListener("change", function () {
+        if (pastOnly.checked) {
+            availableOnly.checked = false;
+        }
         filterEvents();
-      </script>
+    });
+
+    availableOnly.addEventListener("change", function () {
+        if (availableOnly.checked) {
+            pastOnly.checked = false;
+        }
+        filterEvents();
+    });
+
+    filterEvents();
+  </script>
   </main>
 </body>
 </html>
