@@ -58,7 +58,13 @@
             <button type="submit" class="btn">Create Event</button>
         </form>
 
-        <a href="{{ url_for('events') }}">Back to Events</a>
+        <form action="{{ url_for('organiser_logout') }}" method="POST">
+            <button type="submit" class="btn">
+                Log Out
+            </button>
+        </form>
+        <a href="/" class="btn">Back To Home</a>
+
     </main>
     <script>
         const map = L.map("location-map").setView([-31.95, 115.86], 11);

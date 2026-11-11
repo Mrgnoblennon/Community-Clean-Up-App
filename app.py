@@ -553,5 +553,11 @@ def organiser_login():
         return redirect(url_for("create_event"))
 
     return render_template("organiser_login.html")
+
+@app.route("/organiser-logout", methods=["POST"])
+def organiser_logout():
+    session.pop("organiser_id", None)
+    return redirect(url_for("home"))
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
