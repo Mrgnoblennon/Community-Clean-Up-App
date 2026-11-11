@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Already Registered</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <main class="container">
+
+        <header class="brand-header">
+            <a href="{{ url_for('home') }}">
+                <img
+                    src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="Cleaning Up Communities"
+                    class="brand-logo"
+                    style="max-width: 150px;"
+                >
+            </a>
+        </header>
+
+        <section class="event-card">
+            <h1>🌱 You're Already Registered!</h1>
+
+            <p>
+                It looks like you've already signed up for
+                <strong>{{ event.name }}</strong>.
+            </p>
+
+            <p>
+                No need to register twice! Your existing
+                registration is still recorded.
+            </p>
+
+            <h2>Event Details</h2>
+            <p><strong>Date:</strong> {{ event.date }}</p>
+            <p><strong>Time:</strong> {{ event.time }}</p>
+        </section>
+
+        <section class="event-card">
+            <h2>Need to Make Changes?</h2>
+
+            <p>
+                You can view, edit or cancel your registration
+                after verifying your email address.
+            </p>
+
+            <a href="{{ url_for('my_registrations') }}" class="btn">
+                Manage My Registration
+            </a>
+        </section>
+
+        <a href="{{ url_for('events') }}" class="btn">
+            Browse Other Events
+        </a>
+
+    </main>
+</body>
+</html>

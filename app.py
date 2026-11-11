@@ -74,7 +74,6 @@ def event_details(event_id):
         event_has_started=event_has_started
     )
 
-
 @app.route("/events/<int:event_id>/join", methods=["POST"])
 def join_event(event_id):
     name = request.form.get("name", "").strip()
@@ -129,7 +128,7 @@ def join_event(event_id):
         connection.commit()
 
     except sqlite3.IntegrityError:
-        return "This email is already registered for this event", 400
+        return redirect(url_for("already_registered", event_id=event_id))
 
     finally:
         connection.close()
@@ -574,6 +573,23 @@ def organiser_login():
 def organiser_logout():
     session.pop("organiser_id", None)
     return redirect(url_for("home"))
+
+@app.route("/events/<int:event_id>/already-registered")
+def already_registered(event_id):
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    event = connection.execute(
+        "SELECT * FROM events WHERE id = ?",
+        (event_id,)
+    ).fetchone()
+
+    connection.close()
+
+    if event is None:
+        return "Event not found", 404
+
+    return render_template("already_registered.html", event=event)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
