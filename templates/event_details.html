@@ -1,43 +1,108 @@
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ event.name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <main class="container">
-      <header class="brand-header">
-        <a href="{{ url_for('home') }}">
-            <img
-                src="{{ url_for('static', filename='images/logo.png') }}"
-                alt="Cleaning Up Communities"
-                class="brand-logo"
-                style="max-width: 100px;"
-            >
-        </a>
-      </header>
-      <h1>{{ event.name }}</h1>
 
-      <section class="event-card">
-          <p><strong>Date:</strong> {{ event.date }}</p>
-          <p><strong>Time:</strong> {{ event.time }}</p>
-          <p><strong>Registered:</strong> {{ event.registered }} / {{ event.capacity }}</p>
-          <p><strong>Spaces left:</strong> {{ event.capacity - event.registered }}</p>
-      </section>
-      {% if event.registered < event.capacity %}
-        <h2>Join This Clean-Up</h2>
-        <form action="{{ url_for('join_event', event_id=event.id) }}" method="POST">
-            <label for="name">Your Name</label>
-            <input type="text" id="name" name="name" required>
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" required>
-            <button type="submit" class="btn">Join Clean-Up</button>
-        </form>
-      {% else %}
-        <p>This event is fully booked.</p>
-      {% endif %}
-        
-      <a href="{{ url_for('events') }}" class="btn">Back to Events</a>
-  </main>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <main class="container">
+
+        <header class="brand-header">
+            <a href="{{ url_for('home') }}">
+                <img
+                    src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="Cleaning Up Communities"
+                    class="brand-logo"
+                    style="max-width: 100px;"
+                >
+            </a>
+        </header>
+
+        <h1>{{ event.name }}</h1>
+
+        <section class="event-card">
+            <p><strong>Date:</strong> {{ event.date }}</p>
+            <p><strong>Time:</strong> {{ event.time }}</p>
+            <p><strong>Registered:</strong> {{ event.registered }} / {{ event.capacity }}</p>
+            <p><strong>Spaces left:</strong> {{ [0, event.capacity - event.registered] | max }}</p>
+        </section>
+
+        {% if event_has_started %}
+
+            <section class="event-card">
+                <h2>🌿 This Clean-Up Has Started</h2>
+                <p>
+                    Registration for this event is now closed.
+                    Thanks for your interest in helping the community!
+                </p>
+                <p>
+                    Check out our upcoming events to find another
+                    opportunity to get involved.
+                </p>
+            </section>
+
+        {% elif event.registered >= event.capacity %}
+
+            <section class="event-card">
+                <h2>👥 This Event Is Fully Booked</h2>
+                <p>
+                    All available spaces have been taken.
+                    We'd love to see you at another clean-up!
+                </p>
+                <p>
+                    Browse upcoming events to find one with spaces available.
+                </p>
+            </section>
+
+        {% else %}
+
+            <section class="event-card">
+                <h2>🌱 Join This Clean-Up</h2>
+
+                <p>
+                    {{ event.capacity - event.registered }}
+                    spaces remaining. We'd love to have you!
+                </p>
+
+                <form
+                    action="{{ url_for('join_event', event_id=event.id) }}"
+                    method="POST"
+                >
+                    <label for="name">Your Name</label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        autocomplete="name"
+                        maxlength="100"
+                        required
+                    >
+
+                    <label for="email">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <button type="submit" class="btn">
+                        Join Clean-Up
+                    </button>
+                </form>
+            </section>
+
+        {% endif %}
+
+        <a href="{{ url_for('events') }}" class="btn">
+            Browse Other Events
+        </a>
+
+    </main>
 </body>
 </html>

@@ -60,8 +60,20 @@ def event_details(event_id):
 
     if event is None:
         return "Event not found", 404
+    
+    event_start = datetime.strptime(
+        f"{event['date']} {event['time']}",
+        "%Y-%m-%d %H:%M"
+    )
 
-    return render_template("event_details.html", event=event)
+    event_has_started = event_start <= datetime.now()
+
+    return render_template(
+        "event_details.html",
+        event=event,
+        event_has_started=event_has_started
+    )
+
 
 @app.route("/events/<int:event_id>/join", methods=["POST"])
 def join_event(event_id):
@@ -75,35 +87,39 @@ def join_event(event_id):
     cursor = connection.cursor()
 
     try:
-        cursor.execute(
-            "SELECT capacity FROM events WHERE id = ?",
-            (event_id,)
-        )
+        # Get event details
+        cursor.execute("""
+            SELECT capacity, registered, date, time
+            FROM events
+            WHERE id = ?
+        """, (event_id,))
+
         event = cursor.fetchone()
 
         if event is None:
             return "Event not found", 404
 
-        cursor.execute(
-            "SELECT COUNT(*) FROM registrations WHERE event_id = ?",
-            (event_id,)
-        )
-        registration_count = cursor.fetchone()[0]
+        capacity, registered, event_date, event_time = event
 
-        cursor.execute(
-            "SELECT registered FROM events WHERE id = ?",
-            (event_id,)
+        # Prevent registration for events that have started
+        event_start = datetime.strptime(
+            f"{event_date} {event_time}", "%Y-%m-%d %H:%M"
         )
-        registered = cursor.fetchone()[0]
 
-        if registered >= event[0]:
+        if event_start <= datetime.now():
+            return "This event has already started or finished", 400
+
+        # Prevent registration when fully booked
+        if registered >= capacity:
             return "This event is fully booked", 400
 
+        # Register participant
         cursor.execute("""
             INSERT INTO registrations (event_id, name, email)
             VALUES (?, ?, ?)
         """, (event_id, name, email))
 
+        # Update available spaces
         cursor.execute("""
             UPDATE events
             SET registered = registered + 1
