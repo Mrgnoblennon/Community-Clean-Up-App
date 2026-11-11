@@ -385,3 +385,24 @@ textarea {
       max-width: 100%;
   }
 }
+
+/* Safety checklist spacing */
+fieldset.event-card label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 16px 0;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+fieldset.event-card input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+fieldset.event-card legend {
+  padding: 0 10px;
+  font-size: 1.2rem;
+}

@@ -532,7 +532,20 @@ def create_event():
         time = request.form.get("time", "")
         description = request.form.get("description", "").strip()
         equipment = request.form.get("equipment", "").strip()
-        safety_confirmed = request.form.get("safety_confirmed")
+        # Required safety checklist items
+        safety_items = [
+            "safety_weather",
+            "safety_hazards",
+            "safety_equipment",
+            "safety_emergency",
+            "safety_disposal"
+        ]
+
+        # Identify any unchecked requirements
+        missing_safety = [
+            item for item in safety_items
+            if request.form.get(item) != "on"
+]
         try:
             capacity = int(request.form.get("capacity", "0"))
             parsed_date = date.fromisoformat(event_date)
@@ -544,8 +557,12 @@ def create_event():
             return "Participant limit must be at least 1", 400
         if parsed_date < date.today():
             return "Event date cannot be in the past", 400
-        if safety_confirmed != "on":
-            return "Safety checklist confirmation is required", 400
+        if missing_safety:
+            return (
+                "Please complete all five safety checklist requirements "
+                "before creating your event.",
+                400
+            )
         connection = sqlite3.connect("instance/cleanup.db")
         cursor = connection.cursor()
         cursor.execute("""
@@ -555,7 +572,7 @@ def create_event():
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
         """, (
             name, location, latitude, longitude, event_date, time,
-            capacity, description, equipment, "Safety checklist reviewed"
+            capacity, description, equipment, "All five safety requirements confirmed"
         ))
         connection.commit()
         event_id = cursor.lastrowid
