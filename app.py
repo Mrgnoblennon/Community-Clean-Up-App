@@ -499,87 +499,231 @@ def confirmation(event_id):
 
     return render_template("confirmation.html", event=event)
 
+
 @app.route("/create-event", methods=["GET", "POST"])
 def create_event():
-    organiser_id = session.get("organiser_id")  
+
+    organiser_id = session.get("organiser_id")
+
     if not organiser_id:
-        return redirect(url_for("organiser_login")) 
-    connection = sqlite3.connect("instance/cleanup.db") 
+        return redirect(url_for("organiser_login"))
+
+    # Check organiser approval
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
     organiser = connection.execute("""
-        SELECT id FROM users
+        SELECT id
+        FROM users
         WHERE id = ?
           AND role = 'organiser'
           AND approved = 1
-    """, (organiser_id,)).fetchone()    
-    connection.close()  
+    """, (organiser_id,)).fetchone()
+
+    connection.close()
+
     if organiser is None:
         session.pop("organiser_id", None)
         return redirect(url_for("organiser_login"))
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        location = request.form.get("location", "").strip()
 
-        try:
-            latitude = float(request.form.get("latitude", ""))
-            longitude = float(request.form.get("longitude", ""))
-        except (ValueError, TypeError):
-            return "Valid coordinates are required", 400
+    # Display the form
+    if request.method == "GET":
+        return render_template(
+            "create_event.html",
+            form={},
+            error=None
+        )
 
-        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-            return "Coordinates are out of range", 400
-        
-        event_date = request.form.get("date", "")
-        time = request.form.get("time", "")
-        description = request.form.get("description", "").strip()
-        equipment = request.form.get("equipment", "").strip()
-        # Required safety checklist items
-        safety_items = [
-            "safety_weather",
-            "safety_hazards",
-            "safety_equipment",
-            "safety_emergency",
-            "safety_disposal"
-        ]
+    # Preserve submitted values when errors occur
+    form = request.form
 
-        # Identify any unchecked requirements
-        missing_safety = [
-            item for item in safety_items
-            if request.form.get(item) != "on"
-]
-        try:
-            capacity = int(request.form.get("capacity", "0"))
-            parsed_date = date.fromisoformat(event_date)
-        except ValueError:
-            return "Invalid date or participant limit", 400
-        if not name or not location or not time:
-            return "Please complete all required fields", 400
-        if capacity < 1:
-            return "Participant limit must be at least 1", 400
-        if parsed_date < date.today():
-            return "Event date cannot be in the past", 400
-        if missing_safety:
-            return (
-                "Please complete all five safety checklist requirements "
-                "before creating your event.",
-                400
-            )
-        connection = sqlite3.connect("instance/cleanup.db")
+    def form_error(message):
+        return render_template(
+            "create_event.html",
+            form=form,
+            error=message
+        ), 400
+
+    # Collect form data
+    name = form.get("name", "").strip()
+    location = form.get("location", "").strip()
+    event_date = form.get("date", "").strip()
+    event_time = form.get("time", "").strip()
+    description = form.get("description", "").strip()
+    equipment = form.get("equipment", "").strip()
+
+    # Validate event name
+    if not name:
+        return form_error(
+            "Please enter a name for your clean-up event."
+        )
+
+    # Validate location description
+    if not location:
+        return form_error(
+            "Please enter the location of your event."
+        )
+
+    # Validate map selection
+    latitude_value = form.get("latitude", "").strip()
+    longitude_value = form.get("longitude", "").strip()
+
+    if not latitude_value or not longitude_value:
+        return form_error(
+            "Please select your event location by clicking on the map."
+        )
+
+    try:
+        latitude = float(latitude_value)
+        longitude = float(longitude_value)
+    except ValueError:
+        return form_error(
+            "The selected map location is invalid. Please choose another point."
+        )
+
+    # Check coordinate boundaries and finite values
+    import math
+
+    if (
+        not math.isfinite(latitude)
+        or not math.isfinite(longitude)
+        or not (-90 <= latitude <= 90)
+        or not (-180 <= longitude <= 180)
+    ):
+        return form_error(
+            "Please select a valid location on the map."
+        )
+
+    # Validate date
+    if not event_date:
+        return form_error(
+            "Please select a date for your event."
+        )
+
+    try:
+        parsed_date = date.fromisoformat(event_date)
+    except ValueError:
+        return form_error(
+            "Please enter a valid event date."
+        )
+
+    # Validate time
+    if not event_time:
+        return form_error(
+            "Please select a start time for your event."
+        )
+
+    try:
+        parsed_time = datetime.strptime(
+            event_time, "%H:%M"
+        ).time()
+    except ValueError:
+        return form_error(
+            "Please enter a valid event start time."
+        )
+
+    # Prevent past events
+    event_start = datetime.combine(
+        parsed_date, parsed_time
+    )
+
+    if event_start <= datetime.now():
+        return form_error(
+            "Your event must start in the future. "
+            "Please choose a later date or time."
+        )
+
+    # Validate participant capacity
+    capacity_value = form.get("capacity", "").strip()
+
+    if not capacity_value:
+        return form_error(
+            "Please enter the maximum number of participants."
+        )
+
+    try:
+        capacity = int(capacity_value)
+    except ValueError:
+        return form_error(
+            "Participant limit must be a valid whole number."
+        )
+
+    if capacity < 1:
+        return form_error(
+            "Your event must allow at least one participant."
+        )
+
+    # Validate all safety checklist requirements
+    safety_items = [
+        "safety_weather",
+        "safety_hazards",
+        "safety_equipment",
+        "safety_emergency",
+        "safety_disposal"
+    ]
+
+    missing_safety = [
+        item for item in safety_items
+        if form.get(item) != "on"
+    ]
+
+    if missing_safety:
+        return form_error(
+            "Please complete all five safety checklist "
+            "requirements before creating your event."
+        )
+
+    # Save the event
+    connection = sqlite3.connect("instance/cleanup.db")
+
+    try:
         cursor = connection.cursor()
+
         cursor.execute("""
-        INSERT INTO events
-            (name, location, latitude, longitude, date, time, capacity,
-            registered, description, equipment, safety_instructions)
+            INSERT INTO events (
+                name,
+                location,
+                latitude,
+                longitude,
+                date,
+                time,
+                capacity,
+                registered,
+                description,
+                equipment,
+                safety_instructions
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
         """, (
-            name, location, latitude, longitude, event_date, time,
-            capacity, description, equipment, "All five safety requirements confirmed"
+            name,
+            location,
+            latitude,
+            longitude,
+            parsed_date.isoformat(),
+            parsed_time.strftime("%H:%M"),
+            capacity,
+            description,
+            equipment,
+            "All five safety requirements confirmed"
         ))
-        connection.commit()
-        event_id = cursor.lastrowid
-        connection.close()
-        return redirect(url_for("event_created", event_id=event_id))
 
-    return render_template("create_event.html")
+        event_id = cursor.lastrowid
+        connection.commit()
+
+    except sqlite3.Error:
+        connection.rollback()
+        app.logger.exception("Event creation failed")
+        return form_error(
+            "We couldn't save your event right now. "
+            "Please try again."
+        )
+
+    finally:
+        connection.close()
+
+    return redirect(
+        url_for("event_created", event_id=event_id)
+    )
 
 @app.route("/events/<int:event_id>/created")
 def event_created(event_id):

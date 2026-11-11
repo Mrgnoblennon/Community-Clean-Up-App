@@ -1,127 +1,395 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>Create Clean-Up Event</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        .form-error {
+            border-left: 4px solid #e74c3c;
+            padding: 16px;
+            margin: 20px 0;
+        }
+
+        .form-error p {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .safety-checklist label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 16px 0;
+            line-height: 1.5;
+            cursor: pointer;
+        }
+
+        .safety-checklist input[type="checkbox"] {
+            width: auto;
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+
+        .safety-checklist legend {
+            padding: 0 10px;
+            font-size: 1.2rem;
+        }
+
+        #location-map {
+            height: 350px;
+            width: 100%;
+            border-radius: 12px;
+            margin: 12px 0 20px;
+        }
+
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 
 <body>
-    <main class="container">
-        <header class="brand-header">
-            <a href="{{ url_for('home') }}">
-                <img
-                    src="{{ url_for('static', filename='images/logo.png') }}"
-                    alt="Cleaning Up Communities"
-                    class="brand-logo"
+<main class="container">
+
+    <header class="brand-header">
+        <a href="{{ url_for('home') }}">
+            <img
+                src="{{ url_for('static', filename='images/logo.png') }}"
+                alt="Cleaning Up Communities"
+                class="brand-logo"
+            >
+        </a>
+    </header>
+
+    <h1>Create a Clean-Up Event</h1>
+
+    <p>
+        Organise a community clean-up mission by completing
+        the event details and safety checklist below.
+    </p>
+
+    <!-- FRIENDLY ERROR MESSAGE -->
+    {% if error %}
+        <div class="event-card form-error"
+             role="alert"
+             id="form-error">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    <!-- CREATE EVENT FORM -->
+    <form method="POST"
+          action="{{ url_for('create_event') }}">
+
+        <label for="name">Event Name</label>
+        <input
+            type="text"
+            id="name"
+            name="name"
+            value="{{ form.get('name', '') }}"
+            required
+        >
+
+        <label for="location">Location</label>
+        <input
+            type="text"
+            id="location"
+            name="location"
+            value="{{ form.get('location', '') }}"
+            required
+        >
+
+        <p>
+            Click the map to select the exact clean-up location.
+        </p>
+
+        <!-- MAP -->
+        <div id="location-map"></div>
+
+        <button type="button" id="clearLocation" class="btn">
+            Clear Selected Location
+        </button>
+
+        <p id="map-message" aria-live="polite">
+            {% if form.get('latitude') and form.get('longitude') %}
+                Location selected.
+            {% else %}
+                No map location selected yet.
+            {% endif %}
+        </p>
+
+        <!-- COORDINATES -->
+        <input
+            type="hidden"
+            id="latitude"
+            name="latitude"
+            value="{{ form.get('latitude', '') }}"
+        >
+
+        <input
+            type="hidden"
+            id="longitude"
+            name="longitude"
+            value="{{ form.get('longitude', '') }}"
+        >
+
+        <label for="date">Date</label>
+        <input
+            type="date"
+            id="date"
+            name="date"
+            value="{{ form.get('date', '') }}"
+            required
+        >
+
+        <label for="time">Start Time</label>
+        <input
+            type="time"
+            id="time"
+            name="time"
+            value="{{ form.get('time', '') }}"
+            required
+        >
+
+        <label for="capacity">Participant Limit</label>
+        <input
+            type="number"
+            id="capacity"
+            name="capacity"
+            min="1"
+            value="{{ form.get('capacity', '') }}"
+            required
+        >
+
+        <label for="description">Description</label>
+        <textarea
+            id="description"
+            name="description"
+        >{{ form.get('description', '') }}</textarea>
+
+        <label for="equipment">Required Equipment</label>
+        <textarea
+            id="equipment"
+            name="equipment"
+        >{{ form.get('equipment', '') }}</textarea>
+
+        <!-- SAFETY CHECKLIST -->
+        <fieldset class="event-card safety-checklist">
+
+            <legend>
+                <strong>Event Safety Checklist</strong>
+            </legend>
+
+            <p>
+                Confirm that you have considered each safety
+                requirement before creating the event.
+            </p>
+
+            <label>
+                <input
+                    type="checkbox"
+                    name="safety_weather"
+                    {% if form.get('safety_weather') == 'on' %}checked{% endif %}
+                    required
                 >
-            </a>
-        </header>
-        <h1>Create a Clean-Up Event</h1>
+                I have checked the weather forecast and considered
+                whether conditions are safe for participants.
+            </label>
 
-        <form method="POST">
-            <label for="name">Event Name</label>
-            <input type="text" id="name" name="name" required>
+            <label>
+                <input
+                    type="checkbox"
+                    name="safety_hazards"
+                    {% if form.get('safety_hazards') == 'on' %}checked{% endif %}
+                    required
+                >
+                I have identified potential hazards, including
+                sharp objects, traffic and dangerous terrain.
+            </label>
 
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" required>
-            <p>Click the map to choose the clean-up location.</p>
+            <label>
+                <input
+                    type="checkbox"
+                    name="safety_equipment"
+                    {% if form.get('safety_equipment') == 'on' %}checked{% endif %}
+                    required
+                >
+                I have considered appropriate protective equipment,
+                including gloves, enclosed footwear and waste bags.
+            </label>
 
-            <div id="location-map" style="height: 350px; width: 100%;"></div>
+            <label>
+                <input
+                    type="checkbox"
+                    name="safety_emergency"
+                    {% if form.get('safety_emergency') == 'on' %}checked{% endif %}
+                    required
+                >
+                I have considered emergency procedures, first aid
+                and how participants can contact the organiser.
+            </label>
 
-            <input type="hidden" id="latitude" name="latitude" required>
-            <input type="hidden" id="longitude" name="longitude" required>
+            <label>
+                <input
+                    type="checkbox"
+                    name="safety_disposal"
+                    {% if form.get('safety_disposal') == 'on' %}checked{% endif %}
+                    required
+                >
+                I have considered safe waste collection and disposal,
+                including how hazardous materials will be handled.
+            </label>
 
-            <label for="date">Date</label>
-            <input type="date" id="date" name="date" required>
+        </fieldset>
 
-            <label for="time">Start Time</label>
-            <input type="time" id="time" name="time" required>
-
-            <label for="capacity">Participant Limit</label>
-            <input type="number" id="capacity" name="capacity" min="1" required>
-
-            <label for="description">Description</label>
-            <textarea id="description" name="description"></textarea>
-
-            <label for="equipment">Required Equipment</label>
-            <textarea id="equipment" name="equipment"></textarea>
-
-            <fieldset class="event-card">
-                <legend><strong>Event Safety Checklist</strong></legend>
-            
-                <p>
-                    Before creating your event, confirm that you have
-                    considered the following safety requirements.
-                </p>
-            
-                <label>
-                    <input type="checkbox" name="safety_weather" required>
-                    I have checked the weather forecast and considered
-                    whether conditions are safe for participants.
-                </label>
-            
-                <label>
-                    <input type="checkbox" name="safety_hazards" required>
-                    I have identified potential hazards, including
-                    sharp objects, traffic and dangerous terrain.
-                </label>
-            
-                <label>
-                    <input type="checkbox" name="safety_equipment" required>
-                    I have considered appropriate protective equipment,
-                    including gloves, enclosed footwear and waste bags.
-                </label>
-            
-                <label>
-                    <input type="checkbox" name="safety_emergency" required>
-                    I have considered emergency procedures, first aid
-                    and how participants can contact the organiser.
-                </label>
-            
-                <label>
-                    <input type="checkbox" name="safety_disposal" required>
-                    I have considered safe waste collection and disposal,
-                    including how hazardous materials will be handled.
-                </label>
-            </fieldset>
-
-            <button type="submit" class="btn">Create Event</button>
-        </form>
-
-        <form action="{{ url_for('organiser_logout') }}" method="POST">
+        <div class="form-actions">
             <button type="submit" class="btn">
-                Log Out
+                Create Event
             </button>
-        </form>
-        <a href="/" class="btn">Back To Home</a>
+        </div>
 
-    </main>
-    <script>
-        const map = L.map("location-map").setView([-31.95, 115.86], 11);
-    
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-    
-        let marker;
-    
-        map.on("click", function(event) {
-            const latitude = event.latlng.lat;
-            const longitude = event.latlng.lng;
-    
-            document.getElementById("latitude").value = latitude;
-            document.getElementById("longitude").value = longitude;
-    
+    </form>
+
+    <!-- ORGANISER LOGOUT -->
+    <form action="{{ url_for('organiser_logout') }}"
+          method="POST">
+
+        <button type="submit" class="btn">
+            Log Out
+        </button>
+
+    </form>
+
+    <a href="{{ url_for('home') }}" class="btn">
+        Back to Home
+    </a>
+
+</main>
+
+<script>
+    // INITIALISE MAP
+    const map = L.map("location-map").setView(
+        [-31.95, 115.86], 11
+    );
+
+    L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution: "&copy; OpenStreetMap contributors"
+        }
+    ).addTo(map);
+
+    const latitudeInput = document.getElementById("latitude");
+    const longitudeInput = document.getElementById("longitude");
+    const mapMessage = document.getElementById("map-message");
+
+    let marker;
+
+    // RESTORE PREVIOUS MAP SELECTION
+    const savedLatitude = latitudeInput.value;
+    const savedLongitude = longitudeInput.value;
+
+    if (savedLatitude !== "" && savedLongitude !== "") {
+        const lat = Number(savedLatitude);
+        const lng = Number(savedLongitude);
+
+        if (
+            Number.isFinite(lat) &&
+            Number.isFinite(lng) &&
+            Math.abs(lat) <= 90 &&
+            Math.abs(lng) <= 180
+        ) {
+            marker = L.marker([lat, lng]).addTo(map);
+            map.setView([lat, lng], 14);
+            mapMessage.textContent = "Location selected.";
+        }
+    }
+
+    // SELECT LOCATION ON MAP
+    map.on("click", function(event) {
+        const latitude = event.latlng.lat;
+        const longitude = event.latlng.lng;
+
+        latitudeInput.value = latitude;
+        longitudeInput.value = longitude;
+
+        if (marker) {
+            marker.setLatLng([latitude, longitude]);
+        } else {
+            marker = L.marker(
+                [latitude, longitude]
+            ).addTo(map);
+        }
+
+        mapMessage.textContent = "Location selected.";
+    });
+
+    // CHECK MAP LOCATION BEFORE SUBMISSION
+    const createForm = document.querySelector(
+        'form[action="{{ url_for("create_event") }}"]'
+    );
+
+    createForm.addEventListener("submit", function(event) {
+        if (!latitudeInput.value || !longitudeInput.value) {
+            event.preventDefault();
+
+            mapMessage.textContent =
+                "Please click the map to select your event location.";
+
+            mapMessage.style.color = "#e74c3c";
+
+            document.getElementById("location-map")
+                .scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+        }
+    });
+
+    // SCROLL TO SERVER VALIDATION ERRORS
+    const errorMessage = document.getElementById("form-error");
+
+    if (errorMessage) {
+        errorMessage.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    }
+    // Clear selected map location
+    document.getElementById("clearLocation")
+        .addEventListener("click", function() {
+
+            // Remove the marker
             if (marker) {
                 map.removeLayer(marker);
+                marker = null;
             }
-    
-            marker = L.marker([latitude, longitude]).addTo(map);
+
+            // Clear stored coordinates
+            latitudeInput.value = "";
+            longitudeInput.value = "";
+
+            // Update message
+            mapMessage.textContent = "No map location selected yet.";
+            mapMessage.style.color = "";
         });
-    </script>
+</script>
+
 </body>
 </html>
