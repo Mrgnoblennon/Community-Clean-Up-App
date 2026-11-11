@@ -32,6 +32,17 @@ cursor.execute("""
     )
 """)
 
+# Add attendee count to existing registrations
+cursor.execute("PRAGMA table_info(registrations)")
+columns = [column[1] for column in cursor.fetchall()]
+
+if "attendee_count" not in columns:
+    cursor.execute("""
+        ALTER TABLE registrations
+        ADD COLUMN attendee_count INTEGER NOT NULL DEFAULT 1
+        CHECK (attendee_count >= 1)
+    """)
+
 # Create users table for organiser accounts
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (

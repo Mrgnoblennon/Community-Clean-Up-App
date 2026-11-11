@@ -74,60 +74,82 @@ def event_details(event_id):
         event_has_started=event_has_started
     )
 
+
 @app.route("/events/<int:event_id>/join", methods=["POST"])
 def join_event(event_id):
     name = request.form.get("name", "").strip()
     email = request.form.get("email", "").strip().lower()
 
+    try:
+        attendee_count = int(request.form.get("attendee_count", "1"))
+    except ValueError:
+        return "Please enter a valid attendee count", 400
+
     if not name or not email:
         return "Name and email are required", 400
 
+    if attendee_count < 1:
+        return "You must register at least one attendee", 400
+
     connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
 
     try:
-        # Get event details
-        cursor.execute("""
+        # Lock the database for this registration transaction
+        cursor.execute("BEGIN IMMEDIATE")
+
+        event = cursor.execute("""
             SELECT capacity, registered, date, time
             FROM events
             WHERE id = ?
-        """, (event_id,))
-
-        event = cursor.fetchone()
+        """, (event_id,)).fetchone()
 
         if event is None:
             return "Event not found", 404
 
-        capacity, registered, event_date, event_time = event
-
-        # Prevent registration for events that have started
         event_start = datetime.strptime(
-            f"{event_date} {event_time}", "%Y-%m-%d %H:%M"
+            f"{event['date']} {event['time']}",
+            "%Y-%m-%d %H:%M"
         )
 
         if event_start <= datetime.now():
             return "This event has already started or finished", 400
 
-        # Prevent registration when fully booked
-        if registered >= capacity:
-            return "This event is fully booked", 400
+        # Check for an existing registration first
+        existing = cursor.execute("""
+            SELECT id FROM registrations
+            WHERE event_id = ? AND LOWER(email) = ?
+        """, (event_id, email)).fetchone()
 
-        # Register participant
+        if existing:
+            return redirect(url_for("already_registered", event_id=event_id))
+
+        spaces_left = event["capacity"] - event["registered"]
+
+        if attendee_count > spaces_left:
+            return (
+                f"Only {spaces_left} spaces remain. "
+                "Please reduce your attendee count.",
+                400
+            )
+
         cursor.execute("""
-            INSERT INTO registrations (event_id, name, email)
-            VALUES (?, ?, ?)
-        """, (event_id, name, email))
+            INSERT INTO registrations
+                (event_id, name, email, attendee_count)
+            VALUES (?, ?, ?, ?)
+        """, (event_id, name, email, attendee_count))
 
-        # Update available spaces
         cursor.execute("""
             UPDATE events
-            SET registered = registered + 1
+            SET registered = registered + ?
             WHERE id = ?
-        """, (event_id,))
+        """, (attendee_count, event_id))
 
         connection.commit()
 
     except sqlite3.IntegrityError:
+        connection.rollback()
         return redirect(url_for("already_registered", event_id=event_id))
 
     finally:
@@ -355,6 +377,7 @@ def verify_registration():
         my_events=my_events
     )
 
+
 @app.route("/registrations/<int:registration_id>/cancel", methods=["POST"])
 def cancel_registration(registration_id):
 
@@ -366,36 +389,45 @@ def cancel_registration(registration_id):
     connection = sqlite3.connect("instance/cleanup.db")
     cursor = connection.cursor()
 
-    # Find the registration belonging to the verified email
-    cursor.execute("""
-        SELECT event_id
-        FROM registrations
-        WHERE id = ? AND LOWER(email) = ?
-    """, (registration_id, verified_email))
+    try:
+        # Start transaction to keep registration and capacity in sync
+        cursor.execute("BEGIN IMMEDIATE")
 
-    registration = cursor.fetchone()
+        # Find the booking belonging to the verified email
+        cursor.execute("""
+            SELECT event_id, attendee_count
+            FROM registrations
+            WHERE id = ? AND LOWER(email) = ?
+        """, (registration_id, verified_email.lower()))
 
-    if registration is None:
+        registration = cursor.fetchone()
+
+        if registration is None:
+            return "Registration not found or access denied.", 403
+
+        event_id, attendee_count = registration
+
+        # Delete the entire booking
+        cursor.execute("""
+            DELETE FROM registrations
+            WHERE id = ? AND LOWER(email) = ?
+        """, (registration_id, verified_email.lower()))
+
+        # Release every space reserved by this booking
+        cursor.execute("""
+            UPDATE events
+            SET registered = MAX(0, registered - ?)
+            WHERE id = ?
+        """, (attendee_count, event_id))
+
+        connection.commit()
+
+    except sqlite3.Error:
+        connection.rollback()
+        raise
+
+    finally:
         connection.close()
-        return "Registration not found or access denied.", 403
-
-    event_id = registration[0]
-
-    # Delete the registration
-    cursor.execute("""
-        DELETE FROM registrations
-        WHERE id = ? AND LOWER(email) = ?
-    """, (registration_id, verified_email))
-
-    # Update the event's registered count
-    cursor.execute("""
-        UPDATE events
-        SET registered = MAX(0, registered - 1)
-        WHERE id = ?
-    """, (event_id,))
-
-    connection.commit()
-    connection.close()
 
     return redirect(url_for("cancellation_success"))
 
