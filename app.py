@@ -157,6 +157,7 @@ def join_event(event_id):
 
     return redirect(url_for("confirmation", event_id=event_id))
 
+
 @app.route("/registrations/<int:registration_id>/edit", methods=["GET", "POST"])
 def edit_registration(registration_id):
     verified_email = session.get("verified_email")
@@ -169,61 +170,100 @@ def edit_registration(registration_id):
     cursor = connection.cursor()
 
     try:
-        # Only retrieve registrations belonging to the verified email
-        cursor.execute("""
+        if request.method == "POST":
+            cursor.execute("BEGIN IMMEDIATE")
+
+        # Only allow access to the verified user's booking
+        registration = cursor.execute("""
             SELECT *
             FROM registrations
             WHERE id = ? AND LOWER(email) = ?
-        """, (registration_id, verified_email))
-
-        registration = cursor.fetchone()
+        """, (registration_id, verified_email.lower())).fetchone()
 
         if registration is None:
             return "Registration not found or access denied", 403
 
+        # Get current event capacity
+        event = cursor.execute("""
+            SELECT capacity, registered, date, time
+            FROM events
+            WHERE id = ?
+        """, (registration["event_id"],)).fetchone()
+
+        if event is None:
+            return "Event not found", 404
+
         if request.method == "POST":
             name = request.form.get("name", "").strip()
-            email = request.form.get("email", "").strip().lower()
 
-            if not name or not email:
-                return "Name and email are required", 400
-
-            # Prevent duplicate registrations for the same event
-            cursor.execute("""
-                SELECT id
-                FROM registrations
-                WHERE event_id = ?
-                  AND LOWER(email) = ?
-                  AND id != ?
-            """, (registration["event_id"], email, registration_id))
-
-            if cursor.fetchone():
-                return "Email already registered for this event", 400
-
-            # Update only the verified participant's registration
             try:
-                cursor.execute("""
-                    UPDATE registrations
-                    SET name = ?, email = ?
-                    WHERE id = ? AND LOWER(email) = ?
-                """, (name, email, registration_id, verified_email))
+                attendee_count = int(request.form.get("attendee_count", ""))
+            except (ValueError, TypeError):
+                return "Please enter a valid attendee count", 400
 
-                connection.commit()
+            if not name:
+                return "Name is required", 400
 
-            except sqlite3.IntegrityError:
-                return "Email already registered for this event", 400
+            if attendee_count < 1:
+                return "You must have at least one attendee", 400
 
-            # A changed email must be verified again
-            if email != verified_email:
-                session.pop("verified_email", None)
-                return redirect(url_for("my_registrations"))
+            # Don't allow changing bookings after an event starts
+            event_start = datetime.strptime(
+                f"{event['date']} {event['time']}",
+                "%Y-%m-%d %H:%M"
+            )
+
+            if event_start <= datetime.now():
+                return "This event has already started", 400
+
+            # Calculate the difference from the original booking
+            difference = attendee_count - registration["attendee_count"]
+
+            # Check capacity when increasing a booking
+            if difference > 0:
+                spaces_left = event["capacity"] - event["registered"]
+
+                if difference > spaces_left:
+                    return (
+                        f"Only {spaces_left} additional spaces are available.",
+                        400
+                    )
+
+            # Update booking details
+            cursor.execute("""
+                UPDATE registrations
+                SET name = ?, attendee_count = ?
+                WHERE id = ? AND LOWER(email) = ?
+            """, (
+                name,
+                attendee_count,
+                registration_id,
+                verified_email.lower()
+            ))
+
+            # Adjust event attendance by the difference
+            cursor.execute("""
+                UPDATE events
+                SET registered = registered + ?
+                WHERE id = ?
+            """, (difference, registration["event_id"]))
+
+            connection.commit()
 
             return redirect(url_for("my_registrations", updated=1))
 
         return render_template(
             "edit_registration.html",
-            registration=registration
+            registration=registration,
+            max_attendees=(
+                registration["attendee_count"]
+                + max(0, event["capacity"] - event["registered"])
+            )
         )
+
+    except sqlite3.Error:
+        connection.rollback()
+        raise
 
     finally:
         connection.close()
@@ -269,7 +309,10 @@ def my_registrations():
                 events.name AS event_name,
                 events.date,
                 events.time,
-                events.location
+                events.location,
+                registrations.attendee_count,
+                events.registered,
+                events.capacity
             FROM registrations
             JOIN events ON registrations.event_id = events.id
             WHERE LOWER(registrations.email) = ?
@@ -359,7 +402,10 @@ def verify_registration():
             events.name AS event_name,
             events.date,
             events.time,
-            events.location
+            events.location,
+            registrations.attendee_count,
+            events.registered,
+            events.capacity
         FROM registrations
         JOIN events
             ON registrations.event_id = events.id
@@ -376,7 +422,6 @@ def verify_registration():
         message="Email verified successfully!",
         my_events=my_events
     )
-
 
 @app.route("/registrations/<int:registration_id>/cancel", methods=["POST"])
 def cancel_registration(registration_id):

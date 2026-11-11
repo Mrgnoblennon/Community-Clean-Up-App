@@ -81,6 +81,20 @@
                         <strong>Registered as:</strong>
                         {{ event.participant_name }}
                     </p>
+                    <p>
+                        <strong>Your Booking:</strong>
+                        {{ event.attendee_count }} attendee(s)
+                    </p>
+                    
+                    <p>
+                        <strong>Event Attendance:</strong>
+                        {{ event.registered }} / {{ event.capacity }}
+                    </p>
+                    
+                    <p>
+                        <strong>Spaces Remaining:</strong>
+                        {{ [0, event.capacity - event.registered] | max }}
+                    </p>
 
                     <a
                         href="{{ url_for('event_details', event_id=event.event_id) }}"
