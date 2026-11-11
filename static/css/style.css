@@ -406,3 +406,54 @@ fieldset.event-card legend {
   padding: 0 10px;
   font-size: 1.2rem;
 }
+
+/* Event discovery filters */
+.event-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.event-filters input,
+.event-filters select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.event-filters #eventSearch,
+.event-filters #resetFilters {
+  grid-column: 1 / -1;
+}
+
+.event-filters #resetFilters {
+  width: 100%;
+}
+
+/* Navigation buttons */
+.event-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.event-actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
+/* Smaller screens */
+@media (max-width: 480px) {
+  .event-filters {
+      grid-template-columns: 1fr;
+  }
+
+  .event-filters > * {
+      grid-column: 1 / -1;
+  }
+
+  .event-actions {
+      flex-direction: column;
+  }
+}

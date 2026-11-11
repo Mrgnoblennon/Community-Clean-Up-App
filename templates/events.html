@@ -1,14 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Find Clean-Ups</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Clean-Ups</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        .event-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            align-items: center;
+        }
+
+        .event-filters input,
+        .event-filters select {
+            flex: 1 1 180px;
+            min-width: 0;
+        }
+
+        #events-map {
+            height: 400px;
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .event-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .event-status {
+            font-weight: bold;
+        }
+
+        .status-available {
+            color: #28a745;
+        }
+
+        .status-full {
+            color: #e67e22;
+        }
+
+        .status-past {
+            color: #888;
+        }
+
+        .map-pin {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 1px 6px #0005;
+        }
+
+        #eventCount {
+            margin: 16px 0;
+            font-weight: bold;
+        }
+
+        #noEvents {
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
 </head>
+
 <body>
-  <main class="container">
-      <header class="brand-header">
+<main class="container">
+
+    <header class="brand-header">
         <a href="{{ url_for('home') }}">
             <img
                 src="{{ url_for('static', filename='images/logo.png') }}"
@@ -17,76 +91,234 @@
                 style="max-width: 100px;"
             >
         </a>
-      </header>
-      <h1>Find Clean-Ups</h1>
-      <p>Discover upcoming community clean-up events.</p>
+    </header>
 
-      <div id="events-map" style="height: 400px; width: 100%;"></div>
+    <h1>Find Clean-Ups</h1>
+    <p>Discover community clean-up events near you.</p>
 
-      <form action="{{ url_for('events') }}" method="GET">
+    <!-- MAP -->
+    <div id="events-map"></div>
+
+    <!-- MAP LEGEND -->
+    <p>
+        🟢 Available &nbsp;
+        🟠 Fully Booked &nbsp;
+        ⚪ Past Event
+    </p>
+
+    <!-- FILTERS -->
+    <div class="event-filters">
+
         <input
             type="search"
-            name="search"
-            placeholder="Search clean-up events"
-            value="{{ search }}"
+            id="eventSearch"
+            placeholder="Search event or location..."
         >
-        <button type="submit" class="btn">Search</button>
-      </form>
 
-      <label>
-        <input type="checkbox" id="availableOnly">
-        Show events with available spaces only
-      </label>
+        <select id="statusFilter">
+            <option value="upcoming">Upcoming Events</option>
+            <option value="all">All Events</option>
+            <option value="past">Past Events</option>
+        </select>
 
-      <label>
-        <input type="checkbox" id="pastOnly">
-        Show past events only
-      </label>
+        <select id="availabilityFilter">
+            <option value="all">All Availability</option>
+            <option value="available">Spaces Available</option>
+            <option value="full">Fully Booked</option>
+        </select>
 
-      <a href="{{ url_for('my_registrations') }}" class="btn">
-        My Registrations
-      </a>
-      <a href="{{ url_for('home') }}" class="btn">
-        Back to Home
-      </a>
+        <input type="date" id="dateFilter">
 
-      {% for event in events %}
-          <section class="event-card"
-              data-registered="{{ event.registered }}"
-              data-capacity="{{ event.capacity }}"
-              data-date="{{ event.date }}"
-              data-id="{{ event.id }}"
-          >
-          <h2>{{ event.name }}</h2>
-          <p>Date: {{ event.date }}</p>
-          <p>Time: {{ event.time }}</p>
-          <p>{{ event.registered }} of {{ event.capacity }} participants registered</p>
-          <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">
-            View Details
-          </a>
+        <select id="sortFilter">
+            <option value="soonest">Soonest First</option>
+            <option value="latest">Latest First</option>
+        </select>
+
+        <button
+            type="button"
+            id="resetFilters"
+            class="btn"
+        >
+            Reset Filters
+        </button>
+
+    </div>
+
+    <p id="eventCount" aria-live="polite"></p>
+
+    <!-- EVENT CARDS -->
+    <div id="eventList">
+
+        {% for event in events %}
+
+        <section
+            class="event-card"
+            data-id="{{ event.id }}"
+            data-date="{{ event.date }}"
+            data-time="{{ event.time }}"
+            data-registered="{{ event.registered }}"
+            data-capacity="{{ event.capacity }}"
+            data-search="{{ (event.name ~ ' ' ~ event.location)|lower }}"
+        >
+
+            <h2>{{ event.name }}</h2>
+
+            <p><strong>Date:</strong> {{ event.date }}</p>
+            <p><strong>Time:</strong> {{ event.time }}</p>
+            <p><strong>Location:</strong> {{ event.location }}</p>
+
+            <p>
+                <strong>Attendees:</strong>
+                {{ event.registered }} / {{ event.capacity }}
+            </p>
+
+            <p class="event-status"></p>
+
+            <a
+                href="{{ url_for('event_details', event_id=event.id) }}"
+                class="btn"
+            >
+                View Details
+            </a>
+
         </section>
-      {% endfor %}
 
-<!-- Convert Flask event data into JSON -->
+        {% endfor %}
+
+    </div>
+
+    <p id="noEvents" hidden>
+        No events match your filters.
+    </p>
+
+    <div class="event-actions">
+        <a href="{{ url_for('my_registrations') }}" class="btn">
+            My Registrations
+        </a>
+
+        <a href="{{ url_for('home') }}" class="btn">
+            Back to Home
+        </a>
+    </div>
+
+</main>
+
+<!-- FLASK MAP DATA -->
 <script id="events-data" type="application/json">
     {{ map_events | tojson }}
 </script>
 
 <script>
-    // Initialise map
-    const map = L.map("events-map").setView([-31.95, 115.86], 11);
+    // INITIALISE MAP
+    const map = L.map("events-map").setView(
+        [-31.95, 115.86], 11
+    );
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(map);
+    L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution: "&copy; OpenStreetMap contributors"
+        }
+    ).addTo(map);
 
-    const events = JSON.parse(
+    // FLASK DATA
+    const mapEvents = JSON.parse(
         document.getElementById("events-data").textContent
     );
 
-    const markers = [];
-    
-    events.forEach(function(event) {
+    // FILTER ELEMENTS
+    const searchInput = document.getElementById("eventSearch");
+    const statusFilter = document.getElementById("statusFilter");
+    const availabilityFilter = document.getElementById("availabilityFilter");
+    const dateFilter = document.getElementById("dateFilter");
+    const sortFilter = document.getElementById("sortFilter");
+    const resetFilters = document.getElementById("resetFilters");
+
+    const eventList = document.getElementById("eventList");
+    const eventCount = document.getElementById("eventCount");
+    const noEvents = document.getElementById("noEvents");
+
+    const eventCards = [
+        ...document.querySelectorAll(".event-card")
+    ];
+
+    // MARKERS STORED BY EVENT ID
+    const markers = new Map();
+
+    // DETERMINE EVENT STATUS
+    function getEventStatus(card) {
+        const eventDate = new Date(
+            `${card.dataset.date}T${card.dataset.time}`
+        );
+
+        const isPast = eventDate <= new Date();
+
+        const registered = Number(card.dataset.registered);
+        const capacity = Number(card.dataset.capacity);
+        const spacesLeft = Math.max(0, capacity - registered);
+
+        if (isPast) {
+            return {
+                type: "past",
+                label: "Past Event",
+                color: "#888888",
+                spacesLeft
+            };
+        }
+
+        if (spacesLeft === 0) {
+            return {
+                type: "full",
+                label: "Fully Booked",
+                color: "#e67e22",
+                spacesLeft
+            };
+        }
+
+        return {
+            type: "available",
+            label: `${spacesLeft} spaces available`,
+            color: "#28a745",
+            spacesLeft
+        };
+    }
+
+    // CREATE COLOURED MAP ICON
+    function createIcon(color) {
+        return L.divIcon({
+            className: "",
+            html: `
+                <div class="map-pin"
+                     style="background-color: ${color}">
+                </div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
+        });
+    }
+
+    // DISPLAY EVENT STATUS ON CARDS
+    eventCards.forEach(card => {
+        const status = getEventStatus(card);
+        const statusElement = card.querySelector(".event-status");
+
+        statusElement.textContent = status.label;
+        statusElement.classList.add(
+            `status-${status.type}`
+        );
+    });
+
+    // CREATE MAP MARKERS
+    mapEvents.forEach(event => {
+        const card = eventCards.find(
+            item => Number(item.dataset.id) === event.id
+        );
+
+        if (!card) return;
+
+        const status = getEventStatus(card);
+
         const popup = document.createElement("div");
 
         const title = document.createElement("strong");
@@ -94,89 +326,139 @@
         popup.appendChild(title);
 
         const date = document.createElement("p");
-        date.textContent = "Date: " + event.date;
+        date.textContent = `Date: ${event.date}`;
         popup.appendChild(date);
+
+        const attendance = document.createElement("p");
+        attendance.textContent = status.label;
+        popup.appendChild(attendance);
 
         const link = document.createElement("a");
         link.href = event.url;
-        link.textContent = "View Details";
+        link.textContent = "View Event";
         popup.appendChild(link);
 
-        const marker = L.marker([event.latitude, event.longitude])
-            .addTo(map)
-            .bindPopup(popup);
+        const marker = L.marker(
+            [event.latitude, event.longitude],
+            { icon: createIcon(status.color) }
+        )
+        .addTo(map)
+        .bindPopup(popup);
 
-        markers.push({
-            marker: marker,
-            eventId: event.id
-        });
+        markers.set(event.id, marker);
     });
 
-    // Search functionality
-    const searchInput = document.querySelector('input[name="search"]');
-
-    searchInput.addEventListener("search", function () {
-        if (searchInput.value === "") {
-            window.location.href = "{{ url_for('events') }}";
-        }
-    });
-
-    // Event filtering
-    const availableOnly = document.getElementById("availableOnly");
-    const pastOnly = document.getElementById("pastOnly");
-    const eventCards = document.querySelectorAll(".event-card");
-
+    // FILTER EVENTS AND MAP MARKERS
     function filterEvents() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const search = searchInput.value.trim().toLowerCase();
+        const now = new Date();
 
-        eventCards.forEach(function(card) {
+        let visibleCount = 0;
+
+        eventCards.forEach(card => {
+            const eventDate = new Date(
+                `${card.dataset.date}T${card.dataset.time}`
+            );
+
+            const isPast = eventDate <= now;
+
             const registered = Number(card.dataset.registered);
             const capacity = Number(card.dataset.capacity);
-            const eventDate = new Date(card.dataset.date + "T00:00:00");
-        
             const isFull = registered >= capacity;
-            const isPast = eventDate < today;
-        
-            let showCard = true;
-        
-            if (pastOnly.checked) {
-                showCard = isPast;
-            } else if (availableOnly.checked) {
-                showCard = !isPast && !isFull;
-            }
-          
-            card.style.display = showCard ? "block" : "none";
-            const eventId = Number(card.dataset.id);
 
-            markers.forEach(function(item) {
-                if (item.eventId === eventId) {
-                    if (showCard) {
-                        item.marker.addTo(map);
-                    } else {
-                        map.removeLayer(item.marker);
+            const matchesSearch =
+                card.dataset.search.includes(search);
+
+            const matchesStatus =
+                statusFilter.value === "all" ||
+                (statusFilter.value === "past" && isPast) ||
+                (statusFilter.value === "upcoming" && !isPast);
+
+            const matchesAvailability =
+                availabilityFilter.value === "all" ||
+                (availabilityFilter.value === "available" && !isFull) ||
+                (availabilityFilter.value === "full" && isFull);
+
+            const matchesDate =
+                !dateFilter.value ||
+                card.dataset.date === dateFilter.value;
+
+            const visible =
+                matchesSearch &&
+                matchesStatus &&
+                matchesAvailability &&
+                matchesDate;
+
+            card.hidden = !visible;
+            card.style.display = visible ? "" : "none";
+
+            if (visible) {
+                visibleCount++;
+            }
+
+            // SYNCHRONISE MAP MARKERS
+            const eventId = Number(card.dataset.id);
+            const marker = markers.get(eventId);
+
+            if (marker) {
+                if (visible) {
+                    if (!map.hasLayer(marker)) {
+                        marker.addTo(map);
                     }
+                } else {
+                    map.removeLayer(marker);
                 }
-            });
+            }
         });
+
+        // SORT EVENT CARDS
+        const sortedCards = [...eventCards].sort((a, b) => {
+            const dateA = `${a.dataset.date}T${a.dataset.time}`;
+            const dateB = `${b.dataset.date}T${b.dataset.time}`;
+
+            if (sortFilter.value === "latest") {
+                return dateB.localeCompare(dateA);
+            }
+
+            return dateA.localeCompare(dateB);
+        });
+
+        sortedCards.forEach(card => {
+            eventList.appendChild(card);
+        });
+
+        // UPDATE RESULT COUNT
+        eventCount.textContent =
+            `${visibleCount} event${visibleCount === 1 ? "" : "s"} found`;
+
+        noEvents.hidden = visibleCount !== 0;
     }
 
-    pastOnly.addEventListener("change", function () {
-        if (pastOnly.checked) {
-            availableOnly.checked = false;
-        }
+    // LIVE FILTER LISTENERS
+    [
+        searchInput,
+        statusFilter,
+        availabilityFilter,
+        dateFilter,
+        sortFilter
+    ].forEach(control => {
+        control.addEventListener("input", filterEvents);
+    });
+
+    // RESET FILTERS
+    resetFilters.addEventListener("click", () => {
+        searchInput.value = "";
+        statusFilter.value = "upcoming";
+        availabilityFilter.value = "all";
+        dateFilter.value = "";
+        sortFilter.value = "soonest";
+
         filterEvents();
     });
 
-    availableOnly.addEventListener("change", function () {
-        if (availableOnly.checked) {
-            pastOnly.checked = false;
-        }
-        filterEvents();
-    });
-
+    // INITIAL FILTER
     filterEvents();
-  </script>
-  </main>
+</script>
+
 </body>
 </html>
