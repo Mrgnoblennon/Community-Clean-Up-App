@@ -27,6 +27,8 @@
         <section class="event-card">
             <p><strong>Date:</strong> {{ event.date }}</p>
             <p><strong>Time:</strong> {{ event.time }}</p>
+            <p><strong>Location:</strong> {{ event.location }}</p>
+            <p><strong>Description:</strong> {{ event.description or "No description provided." }}</p>
             <p><strong>Registered:</strong> {{ event.registered }} / {{ event.capacity }}</p>
             <p><strong>Spaces left:</strong> {{ [0, event.capacity - event.registered] | max }}</p>
         </section>

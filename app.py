@@ -27,18 +27,38 @@ def events():
 
     cleanup_events = cursor.fetchall()
     connection.close()
+    
+    
     map_events = []
 
     for event in cleanup_events:
-        if event["latitude"] is not None and event["longitude"] is not None:
-            map_events.append({
-                "id": event["id"],
-                "name": event["name"],
-                "date": event["date"],
-                "latitude": event["latitude"],
-                "longitude": event["longitude"],
-                "url": url_for("event_details", event_id=event["id"])
-            })
+        if event["latitude"] is None or event["longitude"] is None:
+            continue
+
+        event_start = datetime.strptime(
+            f"{event['date']} {event['time']}",
+            "%Y-%m-%d %H:%M"
+        )
+
+        spaces_left = max(0, event["capacity"] - event["registered"])
+        has_started = event_start <= datetime.now()
+
+        map_events.append({
+            "id": event["id"],
+            "name": event["name"],
+            "date": event["date"],
+            "time": event["time"],
+            "location": event["location"],
+            "description": event["description"] or "No description provided.",
+            "latitude": event["latitude"],
+            "longitude": event["longitude"],
+            "spaces_left": spaces_left,
+            "has_started": has_started,
+            "is_full": spaces_left == 0,
+            "url": url_for("event_details", event_id=event["id"])
+        })
+
+
 
     return render_template(
         "events.html",
