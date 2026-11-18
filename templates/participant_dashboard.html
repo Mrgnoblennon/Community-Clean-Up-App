@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <main class="container">
+
+        <header class="site-header">
+            <h1>Hey, {{ user.name }}!</h1>
+            <p>Welcome to your community dashboard.</p>
+        </header>
+
+        <section>
+            <h2>My Contributions</h2>
+
+            <div class="stats-grid">
+
+                <div class="event-card stat-card">
+                    <span class="stat-icon">🌱</span>
+                    <h3>Events Attended</h3>
+                    <p class="stat-value">—</p>
+                    <p>Confirmed clean-ups</p>
+                </div>
+
+                <div class="event-card stat-card">
+                    <span class="stat-icon">📅</span>
+                    <h3>Upcoming Events</h3>
+                    <p class="stat-value">—</p>
+                    <p>Events you've joined</p>
+                </div>
+
+                <div class="event-card stat-card">
+                    <span class="stat-icon">🏆</span>
+                    <h3>Community Impact</h3>
+                    <p class="stat-value">—</p>
+                    <p>Contributions tracked</p>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="event-card">
+            <h2>My Account</h2>
+
+            <p><strong>Name:</strong> {{ user.name }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+        </section>
+
+        <section class="event-card">
+            <h2>Get Involved!</h2>
+            <p>Find upcoming clean-up events and help your community.</p>
+
+            <a href="{{ url_for('events') }}" class="btn">
+                Explore Events
+            </a>
+        </section>
+
+        <div class="home-actions">
+            <form method="POST" action="{{ url_for('participant_logout') }}">
+                <button type="submit" class="btn">Log Out</button>
+            </form>
+
+            <a href="{{ url_for('home') }}" class="btn">
+                Back to Home
+            </a>
+        </div>
+
+    </main>
+
+</body>
+</html>

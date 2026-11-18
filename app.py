@@ -797,6 +797,106 @@ def register_organiser():
 
     return render_template("register_organiser.html")
 
+
+@app.route("/register-participant", methods=["GET", "POST"])
+def register_participant():
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not name or not email or not password:
+            return "All fields are required", 400
+
+        if len(password) < 8:
+            return "Password must be at least 8 characters", 400
+
+        password_hash = generate_password_hash(password)
+
+        connection = sqlite3.connect("instance/cleanup.db")
+
+        try:
+            cursor = connection.cursor()
+
+            cursor.execute("""
+                INSERT INTO users
+                    (name, email, password_hash, role, approved)
+                VALUES (?, ?, ?, 'participant', 1)
+            """, (name, email, password_hash))
+
+            connection.commit()
+
+        except sqlite3.IntegrityError:
+            return "An account with this email already exists", 400
+
+        finally:
+            connection.close()
+
+        return redirect(url_for("participant_login"))
+
+    return render_template("register_participant.html")
+
+
+@app.route("/participant-login", methods=["GET", "POST"])
+def participant_login():
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        connection = sqlite3.connect("instance/cleanup.db")
+        connection.row_factory = sqlite3.Row
+
+        user = connection.execute("""
+            SELECT * FROM users
+            WHERE email = ? AND role = 'participant'
+        """, (email,)).fetchone()
+
+        connection.close()
+
+        if user is None or not check_password_hash(user["password_hash"], password):
+            return "Incorrect email or password", 401
+
+        session.clear()
+        session["participant_id"] = user["id"]
+
+        return redirect(url_for("participant_dashboard"))
+
+    return render_template("participant_login.html")
+
+
+@app.route("/participant-logout", methods=["POST"])
+def participant_logout():
+    session.clear()
+    return redirect(url_for("home"))
+
+
+@app.route("/participant-dashboard")
+def participant_dashboard():
+
+    participant_id = session.get("participant_id")
+
+    if not participant_id:
+        return redirect(url_for("participant_login"))
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    user = connection.execute("""
+        SELECT id, name, email FROM users
+        WHERE id = ? AND role = 'participant'
+    """, (participant_id,)).fetchone()
+
+    connection.close()
+
+    if user is None:
+        session.clear()
+        return redirect(url_for("participant_login"))
+
+    return render_template("participant_dashboard.html", user=user)
+
+
 @app.route("/organiser-login", methods=["GET", "POST"])
 def organiser_login():
 

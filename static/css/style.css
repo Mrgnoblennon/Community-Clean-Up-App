@@ -457,3 +457,86 @@ fieldset.event-card legend {
       flex-direction: column;
   }
 }
+
+
+/* =====================================
+   PARTICIPANT ACCOUNTS & DASHBOARD
+===================================== */
+
+/* Registration and login pages */
+
+.auth-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.auth-footer a {
+  color: var(--green);
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.auth-footer a:hover {
+  color: var(--dark-green);
+}
+
+/* Dashboard statistics */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 30px;
+}
+
+.stat-card {
+  margin-top: 0;
+  text-align: center;
+  background: var(--surface-green);
+  padding: 24px 16px;
+}
+
+.stat-icon {
+  display: block;
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.stat-card h3 {
+  font-size: 17px;
+  margin: 8px 0;
+}
+
+.stat-value {
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--green);
+  line-height: 1.2;
+  margin: 15px 0;
+}
+
+/* Dashboard buttons */
+
+.home-actions form {
+  margin: 0;
+  width: 100%;
+}
+
+/* Responsive dashboard */
+
+@media (max-width: 600px) {
+
+  .stats-grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+  }
+
+  .stat-card {
+      padding: 20px;
+  }
+
+  .stat-value {
+      font-size: 36px;
+  }
+}
