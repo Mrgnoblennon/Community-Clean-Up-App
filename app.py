@@ -900,9 +900,9 @@ def participant_logout():
     return redirect(url_for("home"))
 
 
+
 @app.route("/participant-dashboard")
 def participant_dashboard():
-
     participant_id = session.get("participant_id")
 
     if not participant_id:
@@ -912,17 +912,42 @@ def participant_dashboard():
     connection.row_factory = sqlite3.Row
 
     user = connection.execute("""
-        SELECT id, name, email FROM users
+        SELECT id, name, email
+        FROM users
         WHERE id = ? AND role = 'participant'
     """, (participant_id,)).fetchone()
 
-    connection.close()
-
     if user is None:
+        connection.close()
         session.clear()
         return redirect(url_for("participant_login"))
 
-    return render_template("participant_dashboard.html", user=user)
+    upcoming_events = connection.execute("""
+        SELECT
+            events.id,
+            events.name,
+            events.date,
+            events.time,
+            events.location,
+            registrations.attendee_count
+        FROM registrations
+        JOIN events ON registrations.event_id = events.id
+        WHERE registrations.user_id = ?
+          AND datetime(events.date || ' ' || events.time) > ?
+        ORDER BY events.date, events.time
+    """, (
+        participant_id,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "participant_dashboard.html",
+        user=user,
+        upcoming_events=upcoming_events,
+        upcoming_count=len(upcoming_events)
+    )
 
 
 @app.route("/organiser-login", methods=["GET", "POST"])

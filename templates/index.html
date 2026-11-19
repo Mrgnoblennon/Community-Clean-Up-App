@@ -30,8 +30,8 @@
   <p>Find and join local community clean-up events.</p>
   <div class="home-actions">
     <a href="/events" class="btn">Find Clean Ups</a>
-    <a href="/register" class="btn">Create Account</a>
-    <a href="/organiser-login" class="btn">Organiser Login</a>
+    <a href="{{ url_for('register_participant') }}" class="btn">Create Account</a>
+    <a href="{{ url_for('participant_login') }}" class="btn">Organiser Login</a>
     <a href="/register-organiser" class="btn">Become An Organiser</a>
   </div>
 </main>
