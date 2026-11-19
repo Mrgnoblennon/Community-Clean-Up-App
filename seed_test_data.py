@@ -35,73 +35,143 @@ ACTIVITIES = [
 ]
 
 
-def seed(count, database):
-    if not database.is_file():
-        raise SystemExit('Database not found. Run python database.py first from your project folder.')
 
+# Internal tracking means event titles don't need a visible test-data label.
+def setup_tracking(connection):
+    connection.execute('''CREATE TABLE IF NOT EXISTS seeded_events (
+        seed_key TEXT PRIMARY KEY,
+        event_id INTEGER NOT NULL UNIQUE
+    )''')
+
+
+def old_seed_number(name):
+    import re
+    match = re.match(r'^\[DEMO AU\s+(\d+)\]\s*', name)
+    return int(match.group(1)) if match else None
+
+
+def clean_title(name):
+    import re
+    return re.sub(r'^\[DEMO(?: AU(?:\s+\d+)?)?\]\s*', '', name).strip()
+
+
+def migrate_old_names(connection):
+    # Rename only recognisable old seeded records, preserving manual titles.
+    renamed = 0
+    for event_id, name in connection.execute('SELECT id, name FROM events').fetchall():
+        if not (name.startswith('[DEMO AU') or name.startswith('[DEMO]')):
+            continue
+        new_name = clean_title(name)
+        if not new_name or new_name == name:
+            continue
+        connection.execute('UPDATE events SET name = ? WHERE id = ?', (new_name, event_id))
+        index = old_seed_number(name)
+        if index is not None:
+            connection.execute('INSERT OR IGNORE INTO seeded_events(seed_key,event_id) VALUES (?,?)',
+                               (f'au-{index:04d}', event_id))
+        renamed += 1
+    return renamed
+
+
+def has_real_bookings(connection, event_id):
+    cols = {row[1] for row in connection.execute('PRAGMA table_info(registrations)')}
+    rows = connection.execute('SELECT * FROM registrations WHERE event_id=?', (event_id,)).fetchall()
+    names = [row[1] for row in connection.execute('PRAGMA table_info(registrations)')]
+    for row in rows:
+        reg = dict(zip(names, row))
+        email = str(reg.get('email') or '')
+        if not (email.startswith('demo-au-') and email.endswith('@example.invalid')):
+            return True
+        if any(reg.get(field) is not None for field in ('user_id','participant_id') if field in cols):
+            return True
+    return False
+
+
+def reduce_generated(connection, count):
+    # Only delete entries explicitly tracked as generated, never manual events.
+    removed = protected = 0
+    for key, event_id in connection.execute('SELECT seed_key,event_id FROM seeded_events').fetchall():
+        if not key.startswith('au-') or int(key[3:]) <= count:
+            continue
+        if has_real_bookings(connection, event_id):
+            protected += 1
+            continue
+        connection.execute('DELETE FROM registrations WHERE event_id=?', (event_id,))
+        connection.execute('DELETE FROM events WHERE id=?', (event_id,))
+        connection.execute('DELETE FROM seeded_events WHERE seed_key=?', (key,))
+        removed += 1
+    return removed, protected
+
+
+def seed(count, database, reduce=False):
+    if not database.is_file():
+        raise SystemExit('Database not found. Run python3 database.py first.')
     rng = random.Random(20261119)
     today = date.today()
-    created = 0
-    skipped = 0
-    full_count = 0
-
     with sqlite3.connect(database) as connection:
-        connection.execute('PRAGMA foreign_keys = ON')
-        required = {'name', 'location', 'latitude', 'longitude', 'date', 'time', 'registered', 'capacity', 'description', 'equipment', 'safety_instructions'}
+        connection.execute('PRAGMA foreign_keys=ON')
+        required = {'name','location','latitude','longitude','date','time','registered',
+                    'capacity','description','equipment','safety_instructions'}
         columns = {row[1] for row in connection.execute('PRAGMA table_info(events)')}
         if not required.issubset(columns):
-            raise SystemExit('Missing event columns. Run python database.py first.')
-
-        for index in range(1, count + 1):
-            city, state, lat, lon = LOCATIONS[(index - 1) % len(LOCATIONS)]
-            activity, description, equipment = ACTIVITIES[(index - 1) % len(ACTIVITIES)]
-            # Fixed IDs in event names make reruns safe without changing existing events
-            name = f'[DEMO AU {index:03d}] {city} {activity}'
-            exists = connection.execute('SELECT 1 FROM events WHERE name = ?', (name,)).fetchone()
-            if exists:
+            raise SystemExit('Missing event columns. Run python3 database.py first.')
+        setup_tracking(connection)
+        # Every generated event belongs to the approved sample organiser.
+        organiser = connection.execute("SELECT id FROM users WHERE email=? AND role='organiser' AND approved=1", ('demo.organiser@example.invalid',)).fetchone()
+        if not organiser:
+            raise SystemExit('Run python3 seed_test_data.py --accounts-only first to create the organiser account.')
+        organiser_id = organiser[0]
+        # Register old numbered seed rows BEFORE renaming so --reduce works.
+        for event_id, name in connection.execute('SELECT id,name FROM events').fetchall():
+            n = old_seed_number(name)
+            if n is not None:
+                connection.execute('INSERT OR IGNORE INTO seeded_events(seed_key,event_id) VALUES (?,?)',
+                                   (f'au-{n:04d}',event_id))
+        removed, protected = reduce_generated(connection,count) if reduce else (0,0)
+        renamed = migrate_old_names(connection)
+        created = skipped = full_count = 0
+        for index in range(1,count+1):
+            city,state,lat,lon = LOCATIONS[(index-1)%len(LOCATIONS)]
+            activity,description,equipment = ACTIVITIES[(index-1)%len(ACTIVITIES)]
+            title = f'{city} {activity}'
+            key = f'au-{index:04d}'
+            # Keep any existing seeded row; don't recreate it after renaming.
+            if connection.execute('SELECT 1 FROM seeded_events WHERE seed_key=?',(key,)).fetchone():
                 skipped += 1
                 continue
-
-            # Mix past, upcoming, full and available events for filter testing
-            offset = rng.randint(-75, -1) if index % 5 == 0 else rng.randint(2, 120)
-            event_date = (today + timedelta(days=offset)).isoformat()
-            start_hour = rng.choice([7, 8, 9, 10, 13, 15])
-            event_time = f'{start_hour:02d}:00-{start_hour + 2:02d}:00'
-            capacity = rng.choice([10, 15, 20, 25, 30, 40])
-            full = index % 7 == 0
-            # Full demo events have fictional bookings that occupy every place.
-            cursor = connection.execute('''
-                INSERT INTO events
-                (name, location, latitude, longitude, date, time, registered,
-                 capacity, description, equipment, safety_instructions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                name, f'{city}, {state}, Australia', lat, lon, event_date, event_time,
-                capacity if full else 0, capacity,
-                f'[DEMO DATA] {description} This is a fictional event for app testing.',
-                equipment,
-                'Follow organiser instructions, wear enclosed shoes, and avoid hazardous items.'
-            ))
+            # Older unnumbered seed events may already have this title.
+            if connection.execute('SELECT 1 FROM events WHERE name=?',(title,)).fetchone():
+                skipped += 1
+                continue
+            offset = rng.randint(-75,-1) if index%5==0 else rng.randint(2,120)
+            event_date = (today+timedelta(days=offset)).isoformat()
+            start_hour = rng.choice([7,8,9,10,13,15])
+            event_time = f'{start_hour:02d}:00-{start_hour+2:02d}:00'
+            capacity = rng.choice([10,15,20,25,30,40])
+            full = index%7==0
+            cursor = connection.execute('''INSERT INTO events
+                (name,location,latitude,longitude,date,time,registered,capacity,
+                 description,equipment,safety_instructions,organiser_id)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (title,f'{city}, {state}, Australia',lat,lon,event_date,event_time,
+                 capacity if full else 0,capacity,description,equipment,
+                 'Follow organiser instructions, wear enclosed shoes, and avoid hazardous items.',organiser_id))
+            event_id=cursor.lastrowid
+            connection.execute('INSERT INTO seeded_events(seed_key,event_id) VALUES (?,?)',(key,event_id))
             if full:
-                event_id = cursor.lastrowid
-                # Each fictional booking has a unique email; counts add up to capacity.
-                portions = [capacity // 3, capacity // 3, capacity - 2 * (capacity // 3)]
-                for booking_number, attendees in enumerate(portions, start=1):
-                    connection.execute("""INSERT INTO registrations
-                        (event_id, name, email, attendee_count)
-                        VALUES (?, ?, ?, ?)""", (
-                        event_id, f'Demo Guest {booking_number}',
-                        f'demo-au-{index:03d}-{booking_number}@example.invalid', attendees
-                    ))
-                full_count += 1
-            created += 1
-
-    print(f'Added {created} demo events; skipped {skipped} already present.')
-    print(f'New fully booked events: {full_count} (with matching fictional registrations).')
-    print('Existing events and registrations were not modified.')
-
-
-
+                portions=[capacity//3,capacity//3,capacity-2*(capacity//3)]
+                for booking_number,attendees in enumerate(portions,1):
+                    connection.execute('''INSERT INTO registrations
+                        (event_id,name,email,attendee_count) VALUES (?,?,?,?)''',
+                        (event_id,f'Guest {booking_number}',
+                         f'demo-au-{index:03d}-{booking_number}@example.invalid',attendees))
+                full_count+=1
+            created+=1
+    print(f'Created {created} events; {skipped} already existed; renamed {renamed} older event titles.')
+    print(f'Created {full_count} fully booked events.')
+    if reduce:
+        print(f'Removed {removed} excess tracked events; protected {protected} with real bookings.')
+    print('Generated events are tracked internally in SQLite, not labelled on the website.')
 
 def seed_accounts(database):
     # Password is random and only stored locally, never in the downloadable ZIP.
@@ -143,11 +213,14 @@ def seed_accounts(database):
     print(f'Credentials saved locally to: {credential_path}')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Seed fictional Australian clean-up events')
-    parser.add_argument('--count', type=int, default=200, help='Number of demo events (default: 200)')
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Add Australian clean-up events for testing')
+    parser.add_argument('--count',type=int,default=30,help='Number of generated events (default 30)')
+    parser.add_argument('--reduce-demo',action='store_true',help='Remove excess tracked generated events without real bookings')
+    parser.add_argument('--accounts-only',action='store_true',help='Create sample accounts without adding events')
+    args=parser.parse_args()
     if not 1 <= args.count <= 2000:
         parser.error('--count must be between 1 and 2000')
-    seed(args.count, Path(__file__).resolve().parent / 'instance' / 'cleanup.db')
-    seed_accounts(Path(__file__).resolve().parent / 'instance' / 'cleanup.db')
-
+    database=Path(__file__).resolve().parent/'instance'/'cleanup.db'
+    seed_accounts(database)
+    if not args.accounts_only:
+        seed(args.count,database,reduce=args.reduce_demo)

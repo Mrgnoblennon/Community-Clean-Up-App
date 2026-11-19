@@ -120,6 +120,12 @@ def setup_database():
                 f"ALTER TABLE events ADD COLUMN {column_name} {column_type}"
             )
 
+    # Link events to the organiser who created them.
+    # Older events stay unassigned until explicitly assigned.
+    if "organiser_id" not in columns:
+        cursor.execute("ALTER TABLE events ADD COLUMN organiser_id INTEGER REFERENCES users(id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_organiser ON events(organiser_id)")
+
     # Sample clean-up events
     sample_events = [
         ("South Beach Clean-Up", "South Beach, Fremantle",
@@ -176,7 +182,7 @@ def setup_database():
     ]
 
     # Insert sample events only if they don't already exist
-    for event in sample_events:
+    for event in (sample_events if os.environ.get("SEED_SAMPLE_EVENTS") == "1" else []):
         cursor.execute(
             "SELECT id FROM events WHERE name = ?",
             (event[0],)

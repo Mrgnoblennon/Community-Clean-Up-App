@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+import re
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from datetime import date, datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets, os , sqlite3
@@ -576,6 +577,7 @@ def confirmation(event_id):
     return render_template("confirmation.html", event=event)
 
 
+
 @app.route("/create-event", methods=["GET", "POST"])
 def create_event():
 
@@ -624,7 +626,8 @@ def create_event():
     name = form.get("name", "").strip()
     location = form.get("location", "").strip()
     event_date = form.get("date", "").strip()
-    event_time = form.get("time", "").strip()
+    start_time = form.get("start_time", "").strip()
+    end_time = form.get("end_time", "").strip()
     description = form.get("description", "").strip()
     equipment = form.get("equipment", "").strip()
 
@@ -634,7 +637,7 @@ def create_event():
             "Please enter a name for your clean-up event."
         )
 
-    # Validate location description
+    # Validate location
     if not location:
         return form_error(
             "Please enter the location of your event."
@@ -657,7 +660,7 @@ def create_event():
             "The selected map location is invalid. Please choose another point."
         )
 
-    # Check coordinate boundaries and finite values
+    # Check coordinates
     import math
 
     if (
@@ -683,24 +686,28 @@ def create_event():
             "Please enter a valid event date."
         )
 
-    # Validate time
-    if not event_time:
+    # Validate start and end times
+    if not start_time or not end_time:
         return form_error(
-            "Please select a start time for your event."
+            "Please select a start and end time."
         )
 
     try:
-        parsed_time = datetime.strptime(
-            event_time, "%H:%M"
-        ).time()
+        parsed_start = datetime.strptime(start_time, "%H:%M").time()
+        parsed_end = datetime.strptime(end_time, "%H:%M").time()
     except ValueError:
         return form_error(
-            "Please enter a valid event start time."
+            "Please enter valid event times."
+        )
+
+    if parsed_end <= parsed_start:
+        return form_error(
+            "End time must be after start time."
         )
 
     # Prevent past events
     event_start = datetime.combine(
-        parsed_date, parsed_time
+        parsed_date, parsed_start
     )
 
     if event_start <= datetime.now():
@@ -708,6 +715,9 @@ def create_event():
             "Your event must start in the future. "
             "Please choose a later date or time."
         )
+
+    # Store both times in existing column
+    event_time = f"{start_time}-{end_time}"
 
     # Validate participant capacity
     capacity_value = form.get("capacity", "").strip()
@@ -729,7 +739,7 @@ def create_event():
             "Your event must allow at least one participant."
         )
 
-    # Validate all safety checklist requirements
+    # Validate safety checklist
     safety_items = [
         "safety_weather",
         "safety_hazards",
@@ -767,20 +777,22 @@ def create_event():
                 registered,
                 description,
                 equipment,
-                safety_instructions
+                safety_instructions,
+                organiser_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
         """, (
             name,
             location,
             latitude,
             longitude,
             parsed_date.isoformat(),
-            parsed_time.strftime("%H:%M"),
+            event_time,
             capacity,
             description,
             equipment,
-            "All five safety requirements confirmed"
+            "All five safety requirements confirmed",
+            organiser_id
         ))
 
         event_id = cursor.lastrowid
@@ -800,6 +812,7 @@ def create_event():
     return redirect(
         url_for("event_created", event_id=event_id)
     )
+
 
 @app.route("/events/<int:event_id>/created")
 def event_created(event_id):
@@ -964,13 +977,34 @@ def participant_dashboard():
         ORDER BY events.date, events.time
     """, (participant_id,)).fetchall()
 
-    # Count confirmed attendance, not future bookings
-    attendance = connection.execute("""
-        SELECT COUNT(*) AS attended_events,
-               COALESCE(SUM(attendee_count), 0) AS confirmed_places
+    # Count confirmed events and their scheduled volunteer hours
+    confirmed_events = connection.execute("""
+        SELECT events.date, events.time
         FROM registrations
-        WHERE user_id = ? AND attended = 1
-    """, (participant_id,)).fetchone()
+        JOIN events ON events.id = registrations.event_id
+        WHERE registrations.user_id = ? AND registrations.attended = 1
+    """, (participant_id,)).fetchall()
+
+    volunteer_minutes = 0
+    for event in confirmed_events:
+        # Time ranges use HH:MM-HH:MM; single start times have no known duration
+        time_range = re.fullmatch(
+            r"\s*(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})\s*",
+            event["time"] or ""
+        )
+        if not time_range:
+            continue
+        try:
+            start = datetime.strptime(time_range.group(1), "%H:%M")
+            end = datetime.strptime(time_range.group(2), "%H:%M")
+        except ValueError:
+            continue
+        minutes = int((end - start).total_seconds() / 60)
+        if minutes < 0:
+            minutes += 24 * 60  # Events can run past midnight
+        volunteer_minutes += minutes
+
+    volunteer_hours = round(volunteer_minutes / 60, 2)
 
     connection.close()
 
@@ -991,8 +1025,8 @@ def participant_dashboard():
         user=user,
         upcoming_events=upcoming,
         upcoming_count=len(upcoming),
-        attended_count=attendance["attended_events"],
-        confirmed_places=attendance["confirmed_places"]
+        attended_count=len(confirmed_events),
+        volunteer_hours=volunteer_hours
     )
 
 
@@ -1006,7 +1040,7 @@ def organiser_attendance():
     connection = sqlite3.connect("instance/cleanup.db")
     connection.row_factory = sqlite3.Row
     organiser = connection.execute("""
-        SELECT id FROM users
+        SELECT id, is_admin FROM users
         WHERE id = ? AND role = 'organiser' AND approved = 1
     """, (organiser_id,)).fetchone()
     if not organiser:
@@ -1036,7 +1070,10 @@ def organiser_attendance():
             except ValueError:
                 connection.close()
                 return "Invalid event", 400
-            exists = connection.execute("SELECT 1 FROM events WHERE id = ?", (event_id,)).fetchone()
+            exists = connection.execute(
+                "SELECT 1 FROM events WHERE id = ? AND (organiser_id = ? OR ? = 1)",
+                (event_id, organiser_id, organiser["is_admin"])
+            ).fetchone()
             if not exists:
                 connection.close()
                 return "Event not found", 404
@@ -1061,7 +1098,8 @@ def organiser_attendance():
             SELECT registrations.id, events.id AS event_id, events.date, events.time
             FROM registrations JOIN events ON events.id = registrations.event_id
             WHERE registrations.id = ?
-        """, (registration_id,)).fetchone()
+              AND (events.organiser_id = ? OR ? = 1)
+        """, (registration_id, organiser_id, organiser["is_admin"])).fetchone()
         if not registration:
             connection.close()
             return "Registration not found", 404
@@ -1094,13 +1132,16 @@ def organiser_attendance():
     # Show every event, including future events and those without registrations
     events = connection.execute("""
         SELECT id, name, date, time, location FROM events
+        WHERE organiser_id = ? OR ? = 1
         ORDER BY date DESC, time DESC, id DESC
-    """).fetchall()
+    """, (organiser_id, organiser["is_admin"])).fetchall()
     rows = connection.execute("""
         SELECT id AS registration_id, event_id, name AS participant_name,
                email, attendee_count, attended, user_id
-        FROM registrations ORDER BY id
-    """).fetchall()
+        FROM registrations
+        WHERE event_id IN (SELECT id FROM events WHERE organiser_id = ? OR ? = 1)
+        ORDER BY id
+    """, (organiser_id, organiser["is_admin"])).fetchall()
     connection.close()
     by_event = {}
     for row in rows:
