@@ -1,33 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find Clean-Ups | Cleaning Up Communities</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% extends "base.html" %}
+
+{% block title %}Find Clean-Ups | Cleaning Up Communities{% endblock %}
+
+{% block body_attributes %} class="explore-page"{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-</head>
-<body class="explore-page">
+{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
 <main class="explore-shell">
     <!-- Navigation -->
     <header class="home-header explore-header">
         <a href="{{ url_for('home') }}" class="home-brand">
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cleaning Up Communities">
         </a>
-        <nav class="home-nav" aria-label="Main navigation">
-            <a href="{{ url_for('home') }}">Home</a>
-            <a href="{{ url_for('events') }}" aria-current="page">Explore</a>
-        </nav>
-        {% if current_user %}
-            <a class="home-profile" href="{{ url_for('participant_dashboard') if current_user.role == 'participant' else url_for('create_event') }}">
-                <span aria-hidden="true">👤</span><strong>{{ current_user.name.split()[0] }}</strong>
-            </a>
-        {% else %}
-            <a class="home-profile" href="{{ url_for('participant_login') }}">
-                <span aria-hidden="true">👤</span><strong>Log In</strong>
-            </a>
-        {% endif %}
+        
+        {% include 'partials/navbar.html' %}
+
+        {% include 'partials/profile_link.html' %}
     </header>
 
     <!-- Page introduction -->
@@ -147,7 +141,9 @@
         <a href="{{ url_for('home') }}">← Back to Home</a>
     </footer>
 </main>
+{% endblock %}
 
+{% block scripts %}
 <script id="events-data" type="application/json">{{ map_events | tojson }}</script>
 <script>
 // Map and event data
@@ -322,5 +318,4 @@ window.addEventListener('DOMContentLoaded', () => {
     filterEvents();
 });
 </script>
-</body>
-</html>
+{% endblock %}

@@ -1,14 +1,12 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleaning Up Communities</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body class="home-page">
+{% block title %}Cleaning Up Communities{% endblock %}
 
+{% block body_attributes %} class="home-page"{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
 <main class="home-container">
 
     <!-- Header -->
@@ -18,23 +16,11 @@
                  alt="Cleaning Up Communities">
         </a>
 
-        <nav class="home-nav">
-            <a href="{{ url_for('home') }}">Home</a>
-            <a href="{{ url_for('events') }}">Explore</a>
-        </nav>
+        
+        {% include 'partials/navbar.html' %}
 
-        {% if current_user %}
-            <a href="{{ url_for('participant_dashboard') if current_user.role == 'participant' else url_for('create_event') }}"
-               class="home-profile">
-                <span>👤</span>
-                <strong>{{ current_user.name.split()[0] }}</strong>
-            </a>
-        {% else %}
-            <a href="{{ url_for('participant_login') }}" class="home-profile">
-                <span>👤</span>
-                <strong>Log In</strong>
-            </a>
-        {% endif %}
+
+        {% include 'partials/profile_link.html' %}
     </header>
 
     <!-- Hero -->
@@ -125,5 +111,4 @@
     </section>
 
 </main>
-</body>
-</html>
+{% endblock %}

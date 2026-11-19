@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-    <title>Cancellation Successful</title>
-</head>
-<body>
-    <main class="container confirmation-page">
+{% extends "base.html" %}
+
+{% block title %}Cancellation Successful{% endblock %}
+
+{% block content %}
+    <main class="container confirmation-page standard-page">
         <h1>Registration Cancelled!</h1>
         <p>Your registration has been successfully cancelled.</p>
 
@@ -22,5 +17,4 @@
             </a>
         </div>
     </main>
-</body>
-</html>
+{% endblock %}

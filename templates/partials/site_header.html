@@ -1,0 +1,10 @@
+<!-- shared navigation for standard pages -->
+<header class="shared-site-header">
+    <a href="{{ url_for('home') }}" class="home-brand">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cleaning Up Communities">
+    </a>
+
+    {% include 'partials/navbar.html' %}
+
+    {% include 'partials/profile_link.html' %}
+</header>

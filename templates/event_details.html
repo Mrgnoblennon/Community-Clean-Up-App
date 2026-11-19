@@ -1,12 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ event.name }} | Cleaning Up Communities</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body class="details-page">
+{% extends "base.html" %}
+
+{% block title %}{{ event.name }} | Cleaning Up Communities{% endblock %}
+
+{% block body_attributes %} class="details-page"{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
     {% set spaces_left = [0, event.capacity - event.registered] | max %}
     {% set capacity_percent = (event.registered / event.capacity * 100) | round | int if event.capacity > 0 else 100 %}
 
@@ -16,10 +16,9 @@
             <a class="details-brand" href="{{ url_for('home') }}">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cleaning Up Communities">
             </a>
-            <nav class="details-nav" aria-label="Main navigation">
-                <a href="{{ url_for('home') }}">Home</a>
-                <a href="{{ url_for('events') }}">Explore</a>
-            </nav>
+            
+            {% include 'partials/navbar.html' %}
+
             {% if current_user is defined and current_user %}
                 <a class="details-account" href="{{ url_for('participant_dashboard') if current_user.role == 'participant' else url_for('create_event') }}">👤 {{ current_user.name.split()[0] }}</a>
             {% else %}
@@ -114,5 +113,4 @@
             </aside>
         </div>
     </main>
-</body>
-</html>
+{% endblock %}

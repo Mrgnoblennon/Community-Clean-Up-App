@@ -1,17 +1,9 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+{% block title %}Create Clean-Up Event{% endblock %}
 
-    <title>Create Clean-Up Event</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-
-    <link rel="stylesheet"
+{% block head_extra %}
+<link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,22 +54,12 @@
             margin-top: 20px;
         }
     </style>
-</head>
+{% endblock %}
 
-<body>
-<main class="container">
+{% block content %}
+<main class="container standard-page">
 
-    <header class="brand-header">
-        <a href="{{ url_for('home') }}">
-            <img
-                src="{{ url_for('static', filename='images/logo.png') }}"
-                alt="Cleaning Up Communities"
-                class="brand-logo"
-            >
-        </a>
-    </header>
-
-    <h1>Create a Clean-Up Event</h1>
+<h1>Create a Clean-Up Event</h1>
 
     <p>
         Organise a community clean-up mission by completing
@@ -281,7 +263,9 @@
     </a>
 
 </main>
+{% endblock %}
 
+{% block scripts %}
 <script>
     // INITIALISE MAP
     const map = L.map("location-map").setView(
@@ -390,6 +374,4 @@
             mapMessage.style.color = "";
         });
 </script>
-
-</body>
-</html>
+{% endblock %}

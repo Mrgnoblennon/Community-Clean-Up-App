@@ -1,0 +1,13 @@
+<!-- main navigation -->
+<nav class="{{ nav_class | default('home-nav') }}" aria-label="Main navigation">
+    <a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} aria-current="page"{% endif %}>Home</a>
+    <a href="{{ url_for('events') }}"{% if request.endpoint == 'events' %} aria-current="page"{% endif %}>Explore</a>
+
+    {% if current_user %}
+        {% if current_user.role == 'participant' %}
+            <a href="{{ url_for('participant_dashboard') }}"{% if request.endpoint == 'participant_dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
+        {% else %}
+            <a href="{{ url_for('create_event') }}"{% if request.endpoint == 'create_event' %} aria-current="page"{% endif %}>Create Event</a>
+        {% endif %}
+    {% endif %}
+</nav>

@@ -1,22 +1,11 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Join the Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% block title %}Join the Community{% endblock %}
 
-
-    <main class="container">
+{% block content %}
+    <main class="container standard-page">
 
         <header class="site-header">
-            <a href="{{ url_for('home') }}">
-                <img src="{{ url_for('static', filename='images/logo.png') }}"
-                     alt="Cleaning Up Communities" class="brand-logo" style="max-width:150px;">
-            </a>
             <h1>Join the Community!</h1>
             <p>Create an account and start making a difference.</p>
         </header>
@@ -27,15 +16,15 @@
             <form method="POST" action="{{ url_for('register_participant') }}">
 
                 <label for="name">Full Name</label>
-                <input type="text" id="name" name="name"
+                <input type="text" id="name" name="name" autocomplete="name"
                        placeholder="Your full name" required>
 
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email"
+                <input type="email" id="email" name="email" autocomplete="email"
                        placeholder="you@example.com" required>
 
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password"
+                <input type="password" id="password" name="password" autocomplete="new-password"
                        placeholder="Minimum 8 characters"
                        minlength="8" required>
 
@@ -53,6 +42,4 @@
         </div>
 
     </main>
-
-</body>
-</html>
+{% endblock %}

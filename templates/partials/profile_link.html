@@ -1,0 +1,12 @@
+<!-- account shortcut -->
+{% if current_user %}
+    <a class="home-profile" href="{{ url_for('participant_dashboard') if current_user.role == 'participant' else url_for('create_event') }}">
+        <span aria-hidden="true">👤</span>
+        <strong>{{ current_user.name.split()[0] }}</strong>
+    </a>
+{% else %}
+    <a class="home-profile" href="{{ url_for('participant_login') }}">
+        <span aria-hidden="true">👤</span>
+        <strong>Log In</strong>
+    </a>
+{% endif %}

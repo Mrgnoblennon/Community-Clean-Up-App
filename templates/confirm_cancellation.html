@@ -1,15 +1,9 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-    <title>Cancel Registration</title>
-</head>
-<body>
-    <main class="container confirmation-page">
+{% block title %}Cancel Registration{% endblock %}
+
+{% block content %}
+    <main class="container confirmation-page standard-page">
         <h1>Are you sure?</h1>
 
         <p>Do you want to cancel your registration for
@@ -29,5 +23,4 @@
             </a>
         </div>
     </main>
-</body>
-</html>
+{% endblock %}

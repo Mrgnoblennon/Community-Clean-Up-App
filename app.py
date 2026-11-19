@@ -64,7 +64,7 @@ def events():
             continue
 
         event_start = datetime.strptime(
-            f"{event['date']} {event['time']}",
+            f"{event['date']} {event['time'].split('-')[0].strip()}",
             "%Y-%m-%d %H:%M"
         )
 
@@ -110,7 +110,7 @@ def event_details(event_id):
         return "Event not found", 404
     
     event_start = datetime.strptime(
-        f"{event['date']} {event['time']}",
+        f"{event['date']} {event['time'].split('-')[0].strip()}",
         "%Y-%m-%d %H:%M"
     )
 
@@ -157,7 +157,7 @@ def join_event(event_id):
             return "Event not found", 404
 
         event_start = datetime.strptime(
-            f"{event['date']} {event['time']}",
+            f"{event['date']} {event['time'].split('-')[0].strip()}",
             "%Y-%m-%d %H:%M"
         )
 
@@ -285,7 +285,7 @@ def edit_registration(registration_id):
 
             # Don't allow changing bookings after an event starts
             event_start = datetime.strptime(
-                f"{event['date']} {event['time']}",
+                f"{event['date']} {event['time'].split('-')[0].strip()}",
                 "%Y-%m-%d %H:%M"
             )
 

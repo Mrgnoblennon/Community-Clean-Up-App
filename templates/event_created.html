@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Created</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <main class="container">
+{% extends "base.html" %}
+
+{% block title %}Event Created{% endblock %}
+
+{% block content %}
+    <main class="container standard-page">
         <section class="event-card">
             <h1>Event Created Successfully!</h1>
             <p>Your community clean-up event has been saved.</p>
@@ -32,5 +28,4 @@
             </a>
         </section>
     </main>
-</body>
-</html>
+{% endblock %}
