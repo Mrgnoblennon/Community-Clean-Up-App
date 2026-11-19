@@ -540,3 +540,68 @@ fieldset.event-card legend {
       font-size: 36px;
   }
 }
+
+
+/* =====================================
+   LOGGED-IN ACCOUNT BANNER
+===================================== */
+
+.account-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  background: var(--surface-green);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  margin: 25px 0;
+  box-shadow: 0 5px 0 var(--border);
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.account-info strong {
+  color: var(--dark-green);
+  font-size: 17px;
+}
+
+.account-info p {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+
+.account-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+
+  background: var(--sage);
+  border: 2px solid var(--grass);
+  border-radius: 14px;
+  font-size: 24px;
+}
+
+.account-banner .btn {
+  width: auto;
+  min-width: 150px;
+}
+
+@media (max-width: 600px) {
+  .account-banner {
+      flex-direction: column;
+      align-items: stretch;
+  }
+
+  .account-banner .btn {
+      width: 100%;
+  }
+}

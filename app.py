@@ -5,6 +5,34 @@ import secrets, os , sqlite3
  
 app = Flask(__name__)
 
+
+@app.context_processor
+def inject_current_user():
+
+    user_id = session.get("participant_id")
+    role = "participant"
+
+    if not user_id:
+        user_id = session.get("organiser_id")
+        role = "organiser"
+
+    if not user_id:
+        return {"current_user": None}
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+
+    user = connection.execute("""
+        SELECT id, name, email, role
+        FROM users
+        WHERE id = ? AND role = ?
+    """, (user_id, role)).fetchone()
+
+    connection.close()
+
+    return {"current_user": dict(user) if user else None}
+
+
 verification_codes = {}
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 

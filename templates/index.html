@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,33 +9,101 @@
 </head>
 <body>
 <main class="container">
-  <header class="brand-header">
-    <a href="{{ url_for('home') }}">
-        <img
-            src="{{ url_for('static', filename='images/logo.png') }}"
-            alt="Cleaning Up Communities logo"
-            class="brand-logo"
-            style="max-width: 200px;"
-        >
-    </a>
-  </header>
-  <header class="site-header">
-    <div class="logo">Community Clean-Up</div>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/events">Find Clean-Ups</a>
-        <a href="/login">Login</a>
-    </nav>
-  </header>
-  <h1>Community Clean-Up App</h1>
-  <p>Find and join local community clean-up events.</p>
-  <div class="home-actions">
-    <a href="/events" class="btn">Find Clean Ups</a>
-    <a href="{{ url_for('register_participant') }}" class="btn">Create Account</a>
-    <a href="{{ url_for('participant_login') }}" class="btn">Organiser Login</a>
-    <a href="/register-organiser" class="btn">Become An Organiser</a>
-  </div>
+
+    <header class="brand-header">
+        <a href="{{ url_for('home') }}">
+            <img
+                src="{{ url_for('static', filename='images/logo.png') }}"
+                alt="Cleaning Up Communities logo"
+                class="brand-logo"
+                style="max-width: 200px;"
+            >
+        </a>
+    </header>
+
+    <header class="site-header">
+        <div class="logo">Community Clean-Up</div>
+
+
+        {% if current_user %}
+
+        <section class="account-banner">
+            <div class="account-info">
+                <span class="account-avatar">👤</span>
+
+                <div>
+                    <strong>{{ current_user.name }}</strong>
+                    <p>Logged in as {{ current_user.role|capitalize }}</p>
+                </div>
+            </div>
+
+            {% if current_user.role == "participant" %}
+                <a href="{{ url_for('participant_dashboard') }}" class="btn">
+                    My Profile
+                </a>
+            {% else %}
+                <a href="{{ url_for('create_event') }}" class="btn">
+                    Organiser Dashboard
+                </a>
+            {% endif %}
+        </section>
+
+        {% endif %}
+
+
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('events') }}">Find Clean-Ups</a>
+
+            {% if session.get("participant_id") %}
+                <a href="{{ url_for('participant_dashboard') }}">My Dashboard</a>
+            {% else %}
+                <a href="{{ url_for('participant_login') }}">Login</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <h1>Community Clean-Up App</h1>
+    <p>Find and join local community clean-up events.</p>
+
+    <div class="home-actions">
+
+        <a href="{{ url_for('events') }}" class="btn">
+            Find Clean Ups
+        </a>
+
+        {% if session.get("participant_id") %}
+
+            <a href="{{ url_for('participant_dashboard') }}" class="btn">
+                My Dashboard
+            </a>
+
+            <form method="POST" action="{{ url_for('participant_logout') }}">
+                <button type="submit" class="btn">Log Out</button>
+            </form>
+
+        {% else %}
+
+            <a href="{{ url_for('register_participant') }}" class="btn">
+                Create Account
+            </a>
+
+            <a href="{{ url_for('participant_login') }}" class="btn">
+                Participant Login
+            </a>
+
+        {% endif %}
+
+        <a href="{{ url_for('organiser_login') }}" class="btn">
+            Organiser Login
+        </a>
+
+        <a href="{{ url_for('register_organiser') }}" class="btn">
+            Become An Organiser
+        </a>
+
+    </div>
+
 </main>
 </body>
 </html>
-
