@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Business {{ 'Registration' if mode == 'register' else 'Login' }} | Cleaning Up Communities{% endblock %}
+{% block content %}
+<main class="container standard-page rewards-auth"><section class="reward-card"><h1>{{ 'Register Your Business' if mode == 'register' else 'Business Login' }}</h1><p>{{ 'Apply to offer rewards to community volunteers.' if mode == 'register' else 'Manage your business rewards.' }}</p>
+{% if error %}<p class="rewards-error" role="alert">{{ error }}</p>{% endif %}
+{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="rewards-notice">{{ message }}</p>{% endfor %}{% endwith %}
+<form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if mode == 'register' %}<label>Business name<input name="name" required maxlength="120"></label>{% endif %}<label>Email<input type="email" name="email" required></label><label>Password<input type="password" name="password" minlength="8" required></label><button class="btn" type="submit">{{ 'Apply for Approval' if mode == 'register' else 'Log In' }}</button></form>
+<p>{% if mode == 'register' %}<a href="{{ url_for('business_login') }}">Already registered? Log in</a>{% else %}<a href="{{ url_for('business_register') }}">Register your business</a>{% endif %}</p></section></main>
+{% endblock %}

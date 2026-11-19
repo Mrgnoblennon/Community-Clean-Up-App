@@ -7,8 +7,14 @@
  <section class="event-card"><h2>Organiser approvals</h2>
  {% for user in organisers %}
  <div class="admin-user"><div><strong>{{ user.name }}</strong><p>{{ user.email }} · {{ 'Approved' if user.approved else 'Pending approval' }}</p></div>
- <form method="POST"><input type="hidden" name="user_id" value="{{ user.id }}"><input type="hidden" name="action" value="{{ 'revoke' if user.approved else 'approve' }}"><button class="btn" type="submit">{{ 'Revoke' if user.approved else 'Approve' }}</button></form></div>
+ <form method="POST"><input type="hidden" name="csrf_token" value="{{ session.get('rewards_csrf', '') }}"><input type="hidden" name="user_id" value="{{ user.id }}"><input type="hidden" name="action" value="{{ 'revoke' if user.approved else 'approve' }}"><button class="btn" type="submit">{{ 'Revoke' if user.approved else 'Approve' }}</button></form></div>
  {% else %}<p>No organiser accounts yet.</p>{% endfor %}
  </section>
+<section class="event-card"><h2>Business approvals</h2>
+{% for business in businesses %}
+<div class="admin-user"><div><strong>{{ business.name }}</strong><p>{{ business.email }} · {{ 'Approved' if business.approved else 'Pending approval' }}</p></div>
+<form method="POST"><input type="hidden" name="csrf_token" value="{{ session.get('rewards_csrf', '') }}"><input type="hidden" name="business_id" value="{{ business.id }}"><input type="hidden" name="action" value="{{ 'revoke_business' if business.approved else 'approve_business' }}"><button class="btn" type="submit">{{ 'Revoke' if business.approved else 'Approve' }}</button></form></div>
+{% else %}<p>No business accounts yet.</p>{% endfor %}
+</section>
 </main>
 {% endblock %}

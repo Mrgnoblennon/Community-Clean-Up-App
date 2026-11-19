@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from datetime import date, datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets, os , sqlite3
+from rewards import init_rewards, record_attendance_points, reconcile_monthly_bonus, points_balance, csrf
  
 app = Flask(__name__)
 
@@ -35,6 +36,9 @@ def inject_current_user():
 
 
 verification_codes = {}
+
+# Safe to run repeatedly; adds the US-05 tables to existing databases.
+init_rewards()
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
 @app.route("/")
@@ -517,7 +521,7 @@ def cancel_registration(registration_id):
 
         # Find the booking belonging to the verified email
         cursor.execute("""
-            SELECT event_id, attendee_count
+            SELECT event_id, attendee_count, attended
             FROM registrations
             WHERE id = ? AND LOWER(email) = ?
         """, (registration_id, verified_email.lower()))
@@ -527,7 +531,9 @@ def cancel_registration(registration_id):
         if registration is None:
             return "Registration not found or access denied.", 403
 
-        event_id, attendee_count = registration
+        event_id, attendee_count, attended = registration
+        if attended:
+            return "Confirmed attendance cannot be cancelled. Contact the organiser.", 400
 
         # Delete the entire booking
         cursor.execute("""
@@ -1026,7 +1032,8 @@ def participant_dashboard():
         upcoming_events=upcoming,
         upcoming_count=len(upcoming),
         attended_count=len(confirmed_events),
-        volunteer_hours=volunteer_hours
+        volunteer_hours=volunteer_hours,
+        reward_points=points_balance(connection=None, user_id=participant_id)
     )
 
 
@@ -1115,6 +1122,9 @@ def organiser_attendance():
             connection.close()
             return "Attendance cannot be recorded before an event starts", 400
 
+        previous = connection.execute(
+            "SELECT attended, user_id FROM registrations WHERE id = ?", (registration_id,)
+        ).fetchone()
         connection.execute("""
             UPDATE registrations
             SET attended = ?, attendance_marked_at = ?, attendance_marked_by = ?
@@ -1125,10 +1135,14 @@ def organiser_attendance():
             organiser_id if attended else None,
             registration_id
         ))
+        if previous["attended"] != attended and previous["user_id"]:
+            record_attendance_points(connection, previous["user_id"], registration_id, attended)
+            reconcile_monthly_bonus(connection, previous["user_id"], registration["date"][:7])
         connection.commit()
         connection.close()
         return redirect(url_for("organiser_attendance", updated=1))
 
+    csrf()  # Token for the extra-effort points form
     # Show every event, including future events and those without registrations
     events = connection.execute("""
         SELECT id, name, date, time, location FROM events
@@ -1235,7 +1249,12 @@ def admin_dashboard():
         connection.close()
         return "Admin access required", 403
     message = None
+    if "rewards_csrf" not in session:
+        session["rewards_csrf"] = secrets.token_urlsafe(32)
     if request.method == "POST":
+        if not secrets.compare_digest(request.form.get("csrf_token", ""), session["rewards_csrf"]):
+            connection.close()
+            return "Invalid request", 400
         try:
             target_id = int(request.form.get("user_id", "0"))
         except ValueError:
@@ -1245,10 +1264,22 @@ def admin_dashboard():
             connection.execute("UPDATE users SET approved=? WHERE id=? AND role='organiser' AND is_admin=0", (1 if action == "approve" else 0, target_id))
             connection.commit()
             message = "Organiser approval updated."
+        elif action in ("approve_business", "revoke_business"):
+            try:
+                business_id = int(request.form.get("business_id", "0"))
+            except ValueError:
+                business_id = 0
+            connection.execute("UPDATE businesses SET approved=? WHERE id=?", (1 if action == "approve_business" else 0, business_id))
+            connection.commit()
+            message = "Business approval updated."
+    businesses = connection.execute("SELECT id,name,email,approved FROM businesses ORDER BY id DESC").fetchall()
     organisers = connection.execute("SELECT id,name,email,approved FROM users WHERE role='organiser' AND is_admin=0 ORDER BY id DESC").fetchall()
     connection.close()
-    return render_template("admin.html", organisers=organisers, message=message)
+    return render_template("admin.html", organisers=organisers, businesses=businesses, message=message)
 
+
+from rewards import register_reward_routes
+register_reward_routes(app)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

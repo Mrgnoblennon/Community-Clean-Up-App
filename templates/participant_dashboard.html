@@ -59,6 +59,12 @@
                     <p class="dashboard-stat-value">{{ volunteer_hours | int if volunteer_hours == volunteer_hours | int else volunteer_hours }}</p>
                     <p class="dashboard-stat-note">Volunteer hours completed</p>
                 </article>
+                <article class="dashboard-stat-card">
+                    <span class="dashboard-stat-icon" aria-hidden="true">🎁</span>
+                    <h3>Reward Points</h3>
+                    <p class="dashboard-stat-value">{{ reward_points }}</p>
+                    <p class="dashboard-stat-note"><a href="{{ url_for('rewards_shop') }}">Browse rewards →</a></p>
+                </article>
             </div>
         </section>
 

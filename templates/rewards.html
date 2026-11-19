@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Rewards Shop | Cleaning Up Communities{% endblock %}
+{% block content %}
+<main class="container standard-page rewards-page">
+  <section class="rewards-hero"><span>🎁 COMMUNITY REWARDS</span><h1>Rewards Shop</h1><p>Join clean-ups, earn points and redeem rewards from approved local businesses.</p>
+  {% if balance is not none %}<p class="rewards-balance">Your balance: <strong>{{ balance }} points</strong></p>{% else %}<p><a class="btn" href="{{ url_for('participant_login') }}">Log in to earn and redeem points</a></p>{% endif %}</section>
+  {% with messages=get_flashed_messages() %}{% if messages %}{% for message in messages %}<p class="rewards-notice" role="status">{{ message }}</p>{% endfor %}{% endif %}{% endwith %}
+  <section><h2>Available Rewards</h2><div class="rewards-grid">
+  {% for reward in rewards %}<article class="reward-card"><span class="reward-icon">🎁</span><p class="reward-business">{{ reward.business_name }}</p><h3>{{ reward.title }}</h3><p>{{ reward.description }}</p><p><strong>{{ reward.cost }} points</strong> · {{ reward.stock }} left</p>
+  {% if balance is not none %}<form method="POST" action="{{ url_for('redeem_reward',reward_id=reward.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" type="submit" {% if reward.stock == 0 or balance < reward.cost %}disabled{% endif %}>{{ 'Out of stock' if reward.stock == 0 else 'Not enough points' if balance < reward.cost else 'Redeem Reward' }}</button></form>{% endif %}</article>
+  {% else %}<p>No rewards available yet. Check back soon!</p>{% endfor %}
+  </div></section>
+  {% if balance is not none %}<section class="rewards-history"><h2>My Redemptions</h2>{% for item in history %}<p>✓ {{ item.title }} — {{ item.points_spent }} points · {{ item.created_at[:10] }}</p>{% else %}<p>You haven't redeemed any rewards yet.</p>{% endfor %}</section>{% endif %}
+  <p class="rewards-footer"><a href="{{ url_for('business_register') }}">Own a local business? Offer a reward →</a></p>
+</main>
+{% endblock %}

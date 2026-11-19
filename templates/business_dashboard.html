@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Business Dashboard | Cleaning Up Communities{% endblock %}
+{% block content %}
+<main class="container standard-page rewards-page"><section class="rewards-hero"><span>🏪 BUSINESS PARTNER</span><h1>{{ business.name }}</h1><p>{{ 'Approved — your active rewards are visible in the shop.' if business.approved else 'Approval pending — an administrator must approve your account before you can offer rewards.' }}</p></section>
+{% if error %}<p class="rewards-error" role="alert">{{ error }}</p>{% endif %}
+{% if business.approved %}
+<section class="reward-card"><h2>Add a Reward</h2><form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="create"><label>Reward name<input name="title" required maxlength="120" placeholder="e.g. Free coffee"></label><label>Description<textarea name="description" rows="3" placeholder="What does the participant receive?"></textarea></label><label>Points required<input type="number" name="cost" min="1" required></label><label>Available quantity<input type="number" name="stock" min="0" required></label><button class="btn" type="submit">Add Reward</button></form></section>
+<section><h2>Manage Rewards</h2><div class="rewards-grid">{% for reward in rewards %}<article class="reward-card"><h3>{{ reward.title }}</h3><p>{{ reward.cost }} points</p><form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="update"><input type="hidden" name="reward_id" value="{{ reward.id }}"><label>Stock<input type="number" name="stock" min="0" value="{{ reward.stock }}" required></label><label class="reward-check"><input type="checkbox" name="active" {% if reward.active %}checked{% endif %}> Available in shop</label><button class="btn" type="submit">Save Changes</button></form></article>{% else %}<p>No rewards created yet.</p>{% endfor %}</div></section>
+<section class="rewards-history"><h2>Redemption History</h2>{% for claim in claims %}<p>#{{ claim.id }} · {{ claim.title }} · {{ claim.participant_name }} · {{ claim.points_spent }} points · {{ claim.created_at[:10] }}</p>{% else %}<p>No redemptions yet.</p>{% endfor %}</section>
+{% endif %}
+<form method="POST" action="{{ url_for('business_logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" type="submit">Log Out</button></form></main>
+{% endblock %}

@@ -57,6 +57,13 @@
                                     <input type="hidden" name="attended" value="{{ 0 if registration.attended else 1 }}">
                                     <button class="btn" type="submit">{{ 'Undo Attendance' if registration.attended else 'Confirm Attendance' }}</button>
                                 </form>
+                                {% if registration.attended and registration.user_id %}
+                                <form method="POST" action="{{ url_for('award_extra_points') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ session.get('rewards_csrf', '') }}">
+                                    <input type="hidden" name="registration_id" value="{{ registration.registration_id }}">
+                                    <button class="btn" type="submit">Award +50 extra points</button>
+                                </form>
+                                {% endif %}
                             {% else %}
                                 <p class="attendance-note">Available after the event starts</p>
                             {% endif %}
