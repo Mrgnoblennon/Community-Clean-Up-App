@@ -1,127 +1,118 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ event.name }}</title>
+    <title>{{ event.name }} | Cleaning Up Communities</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+<body class="details-page">
+    {% set spaces_left = [0, event.capacity - event.registered] | max %}
+    {% set capacity_percent = (event.registered / event.capacity * 100) | round | int if event.capacity > 0 else 100 %}
 
-<body>
-    <main class="container">
-
-        <header class="brand-header">
-            <a href="{{ url_for('home') }}">
-                <img
-                    src="{{ url_for('static', filename='images/logo.png') }}"
-                    alt="Cleaning Up Communities"
-                    class="brand-logo"
-                    style="max-width: 100px;"
-                >
+    <main class="details-shell">
+        <!-- navigation -->
+        <header class="details-header">
+            <a class="details-brand" href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cleaning Up Communities">
             </a>
+            <nav class="details-nav" aria-label="Main navigation">
+                <a href="{{ url_for('home') }}">Home</a>
+                <a href="{{ url_for('events') }}">Explore</a>
+            </nav>
+            {% if current_user is defined and current_user %}
+                <a class="details-account" href="{{ url_for('participant_dashboard') if current_user.role == 'participant' else url_for('create_event') }}">👤 {{ current_user.name.split()[0] }}</a>
+            {% else %}
+                <a class="details-account" href="{{ url_for('participant_login') }}">👤 Log In</a>
+            {% endif %}
         </header>
 
-        <h1>{{ event.name }}</h1>
+        <a class="details-back" href="{{ url_for('events') }}">← Back to Clean-Ups</a>
 
-        <section class="event-card">
-            <p><strong>Date:</strong> {{ event.date }}</p>
-            <p><strong>Time:</strong> {{ event.time }}</p>
-            <p><strong>Location:</strong> {{ event.location }}</p>
-            <p><strong>Description:</strong> {{ event.description or "No description provided." }}</p>
-            <p><strong>Registered:</strong> {{ event.registered }} / {{ event.capacity }}</p>
-            <p><strong>Spaces left:</strong> {{ [0, event.capacity - event.registered] | max }}</p>
+        <!-- event heading -->
+        <section class="details-hero">
+            <div>
+                <span class="details-eyebrow">🌱 COMMUNITY CLEAN-UP</span>
+                <h1>{{ event.name }}</h1>
+                <p>Every helping hand makes a difference.</p>
+            </div>
+            <div class="details-hero-art" aria-hidden="true">🌎<span>✨</span></div>
         </section>
 
-        {% if event_has_started %}
+        <div class="details-layout">
+            <!-- event information -->
+            <div class="details-main">
+                <section class="details-panel">
+                    <h2>📍 Event Details</h2>
+                    <div class="details-info-grid">
+                        <div class="details-info-item"><span>📅 Date</span><strong>{{ event.date }}</strong></div>
+                        <div class="details-info-item"><span>🕒 Time</span><strong>{{ event.time }}</strong></div>
+                        <div class="details-info-item details-info-wide"><span>📍 Location</span><strong>{{ event.location }}</strong></div>
+                    </div>
+                </section>
 
-            <section class="event-card">
-                <h2>🌿 This Clean-Up Has Started</h2>
-                <p>
-                    Registration for this event is now closed.
-                    Thanks for your interest in helping the community!
-                </p>
-                <p>
-                    Check out our upcoming events to find another
-                    opportunity to get involved.
-                </p>
-            </section>
+                <section class="details-panel">
+                    <h2>🌿 About This Clean-Up</h2>
+                    <p class="details-description">{{ event.description or 'No description provided.' }}</p>
+                </section>
 
-        {% elif event.registered >= event.capacity %}
+                <!-- event capacity -->
+                <section class="details-panel">
+                    <div class="details-capacity-heading">
+                        <h2>👥 Community Spots</h2>
+                        {% if event_has_started %}
+                            <span class="details-status details-status-past">Started / Past</span>
+                        {% elif spaces_left == 0 %}
+                            <span class="details-status details-status-full">Fully Booked</span>
+                        {% else %}
+                            <span class="details-status details-status-open">Spaces Available</span>
+                        {% endif %}
+                    </div>
+                    <div class="details-capacity-numbers">
+                        <strong>{{ event.registered }} / {{ event.capacity }} registered</strong>
+                        <span>{{ spaces_left }} spaces left</span>
+                    </div>
+                    <div class="details-progress" role="progressbar" aria-label="Event capacity filled" aria-valuemin="0" aria-valuemax="{{ event.capacity }}" aria-valuenow="{{ event.registered }}">
+                        <div class="details-progress-fill" style="width: {{ [100, capacity_percent] | min }}%;"></div>
+                    </div>
+                </section>
+            </div>
 
-            <section class="event-card">
-                <h2>👥 This Event Is Fully Booked</h2>
-                <p>
-                    All available spaces have been taken.
-                    We'd love to see you at another clean-up!
-                </p>
-                <p>
-                    Browse upcoming events to find one with spaces available.
-                </p>
-            </section>
+            <!-- registration -->
+            <aside class="details-panel details-join-panel">
+                {% if event_has_started %}
+                    <span class="details-join-icon">🌿</span>
+                    <h2>This Clean-Up Has Started</h2>
+                    <p>Registration for this event is now closed. Thanks for your interest in helping the community!</p>
+                    <p>Check out our upcoming events for another opportunity to get involved.</p>
+                    <a href="{{ url_for('events') }}" class="btn">Explore Other Events →</a>
+                {% elif event.registered >= event.capacity %}
+                    <span class="details-join-icon">👥</span>
+                    <h2>This Event Is Fully Booked</h2>
+                    <p>All available spaces have been taken. We'd love to see you at another clean-up!</p>
+                    <a href="{{ url_for('events') }}" class="btn">Explore Other Events →</a>
+                {% else %}
+                    <span class="details-join-icon">🙌</span>
+                    <h2>Join This Clean-Up</h2>
+                    <p><strong>{{ spaces_left }} spaces remaining.</strong> We'd love to have you!</p>
 
-        {% else %}
+                    <!-- keep form names for Flask -->
+                    <form action="{{ url_for('join_event', event_id=event.id) }}" method="POST" class="details-join-form">
+                        <label for="name">Your Name</label>
+                        <input type="text" id="name" name="name" autocomplete="name" maxlength="100" placeholder="Enter your name" required>
 
-            <section class="event-card">
-                <h2>🌱 Join This Clean-Up</h2>
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required>
 
-                <p>
-                    {{ event.capacity - event.registered }}
-                    spaces remaining. We'd love to have you!
-                </p>
+                        <label for="attendee_count">Number of Attendees</label>
+                        <input type="number" id="attendee_count" name="attendee_count" min="1" max="{{ spaces_left }}" value="1" required>
+                        <p class="details-form-note">You can register up to {{ spaces_left }} people, including yourself.</p>
 
-                <form
-                    action="{{ url_for('join_event', event_id=event.id) }}"
-                    method="POST"
-                >
-                    <label for="name">Your Name</label>
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        autocomplete="name"
-                        maxlength="100"
-                        required
-                    >
-
-                    <label for="email">Email Address</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        autocomplete="email"
-                        required
-                    >
-                    <label for="attendee_count">Number of Attendees</label>
-
-                    <input
-                        type="number"
-                        id="attendee_count"
-                        name="attendee_count"
-                        min="1"
-                        max="{{ event.capacity - event.registered }}"
-                        value="1"
-                        required
-                    >
-                    
-                    <p>
-                        You can register up to
-                        {{ event.capacity - event.registered }}
-                        people, including yourself.
-                    </p>
-
-                    <button type="submit" class="btn">
-                        Join Clean-Up
-                    </button>
-                </form>
-            </section>
-
-        {% endif %}
-
-        <a href="{{ url_for('events') }}" class="btn">
-            Browse Other Events
-        </a>
-
+                        <button type="submit" class="btn details-submit">Join Clean-Up →</button>
+                    </form>
+                {% endif %}
+            </aside>
+        </div>
     </main>
 </body>
 </html>
