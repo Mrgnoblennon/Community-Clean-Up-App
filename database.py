@@ -39,6 +39,15 @@ def setup_database():
     """)
 
     # Add attendee count to existing registrations
+    # Link event registrations to participant accounts
+    cursor.execute("PRAGMA table_info(registrations)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "user_id" not in columns:
+        cursor.execute("""
+            ALTER TABLE registrations
+            ADD COLUMN user_id INTEGER REFERENCES users(id)
+        """)
     cursor.execute("PRAGMA table_info(registrations)")
     columns = [column[1] for column in cursor.fetchall()]
 

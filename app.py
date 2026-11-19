@@ -154,11 +154,39 @@ def join_event(event_id):
                 400
             )
 
+        
+        # Link the booking to the logged-in participant
+        participant_id = session.get("participant_id")
+        registration_user_id = None
+
+        if participant_id:
+            participant = cursor.execute("""
+                SELECT id, email
+                FROM users
+                WHERE id = ? AND role = 'participant'
+            """, (participant_id,)).fetchone()
+
+            if participant is None:
+                return "Participant account not found", 403
+
+            # Prevent linking another person's email
+            if email != participant["email"].lower():
+                return "Please use your account email when registering", 400
+
+            registration_user_id = participant["id"]
+
         cursor.execute("""
             INSERT INTO registrations
-                (event_id, name, email, attendee_count)
-            VALUES (?, ?, ?, ?)
-        """, (event_id, name, email, attendee_count))
+                (event_id, name, email, attendee_count, user_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            event_id,
+            name,
+            email,
+            attendee_count,
+            registration_user_id
+        ))
+
 
         cursor.execute("""
             UPDATE events
