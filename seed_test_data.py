@@ -35,75 +35,6 @@ ACTIVITIES = [
 ]
 
 
-<<<<<<< HEAD
-def seed(count, database):
-    if not database.is_file():
-        raise SystemExit('Database not found. Run python database.py first from your project folder.')
-
-    rng = random.Random(20261119)
-    today = date.today()
-    created = 0
-    skipped = 0
-    full_count = 0
-
-    with sqlite3.connect(database) as connection:
-        connection.execute('PRAGMA foreign_keys = ON')
-        required = {'name', 'location', 'latitude', 'longitude', 'date', 'time', 'registered', 'capacity', 'description', 'equipment', 'safety_instructions'}
-        columns = {row[1] for row in connection.execute('PRAGMA table_info(events)')}
-        if not required.issubset(columns):
-            raise SystemExit('Missing event columns. Run python database.py first.')
-
-        for index in range(1, count + 1):
-            city, state, lat, lon = LOCATIONS[(index - 1) % len(LOCATIONS)]
-            activity, description, equipment = ACTIVITIES[(index - 1) % len(ACTIVITIES)]
-            # Fixed IDs in event names make reruns safe without changing existing events
-            name = f'[DEMO AU {index:03d}] {city} {activity}'
-            exists = connection.execute('SELECT 1 FROM events WHERE name = ?', (name,)).fetchone()
-            if exists:
-                skipped += 1
-                continue
-
-            # Mix past, upcoming, full and available events for filter testing
-            offset = rng.randint(-75, -1) if index % 5 == 0 else rng.randint(2, 120)
-            event_date = (today + timedelta(days=offset)).isoformat()
-            start_hour = rng.choice([7, 8, 9, 10, 13, 15])
-            event_time = f'{start_hour:02d}:00-{start_hour + 2:02d}:00'
-            capacity = rng.choice([10, 15, 20, 25, 30, 40])
-            full = index % 7 == 0
-            # Full demo events have fictional bookings that occupy every place.
-            cursor = connection.execute('''
-                INSERT INTO events
-                (name, location, latitude, longitude, date, time, registered,
-                 capacity, description, equipment, safety_instructions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                name, f'{city}, {state}, Australia', lat, lon, event_date, event_time,
-                capacity if full else 0, capacity,
-                f'[DEMO DATA] {description} This is a fictional event for app testing.',
-                equipment,
-                'Follow organiser instructions, wear enclosed shoes, and avoid hazardous items.'
-            ))
-            if full:
-                event_id = cursor.lastrowid
-                # Each fictional booking has a unique email; counts add up to capacity.
-                portions = [capacity // 3, capacity // 3, capacity - 2 * (capacity // 3)]
-                for booking_number, attendees in enumerate(portions, start=1):
-                    connection.execute("""INSERT INTO registrations
-                        (event_id, name, email, attendee_count)
-                        VALUES (?, ?, ?, ?)""", (
-                        event_id, f'Demo Guest {booking_number}',
-                        f'demo-au-{index:03d}-{booking_number}@example.invalid', attendees
-                    ))
-                full_count += 1
-            created += 1
-
-    print(f'Added {created} demo events; skipped {skipped} already present.')
-    print(f'New fully booked events: {full_count} (with matching fictional registrations).')
-    print('Existing events and registrations were not modified.')
-
-
-
-=======
 
 # Internal tracking means event titles don't need a visible test-data label.
 def setup_tracking(connection):
@@ -241,7 +172,6 @@ def seed(count, database, reduce=False):
     if reduce:
         print(f'Removed {removed} excess tracked events; protected {protected} with real bookings.')
     print('Generated events are tracked internally in SQLite, not labelled on the website.')
->>>>>>> US-04-track-stats
 
 def seed_accounts(database):
     # Password is random and only stored locally, never in the downloadable ZIP.
@@ -283,16 +213,6 @@ def seed_accounts(database):
     print(f'Credentials saved locally to: {credential_path}')
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    parser = argparse.ArgumentParser(description='Seed fictional Australian clean-up events')
-    parser.add_argument('--count', type=int, default=200, help='Number of demo events (default: 200)')
-    args = parser.parse_args()
-    if not 1 <= args.count <= 2000:
-        parser.error('--count must be between 1 and 2000')
-    seed(args.count, Path(__file__).resolve().parent / 'instance' / 'cleanup.db')
-    seed_accounts(Path(__file__).resolve().parent / 'instance' / 'cleanup.db')
-
-=======
     parser = argparse.ArgumentParser(description='Add Australian clean-up events for testing')
     parser.add_argument('--count',type=int,default=30,help='Number of generated events (default 30)')
     parser.add_argument('--reduce-demo',action='store_true',help='Remove excess tracked generated events without real bookings')
@@ -304,4 +224,3 @@ if __name__ == '__main__':
     seed_accounts(database)
     if not args.accounts_only:
         seed(args.count,database,reduce=args.reduce_demo)
->>>>>>> US-04-track-stats
