@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration Confirmed</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <main class="container">
+{% extends "base.html" %}
+
+{% block title %}Registration Confirmed{% endblock %}
+
+{% block content %}
+    <main class="container standard-page">
         <section class="event-card">  
             <h1>Registration Successful!</h1>
             <p>You've joined the clean-up event.</p>
@@ -21,5 +17,4 @@
             </a>
         </section>
     </main>
-</body>
-</html>
+{% endblock %}

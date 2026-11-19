@@ -1,17 +1,9 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+{% block title %}Create Clean-Up Event{% endblock %}
 
-    <title>Create Clean-Up Event</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-
-    <link rel="stylesheet"
+{% block head_extra %}
+<link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,22 +54,12 @@
             margin-top: 20px;
         }
     </style>
-</head>
+{% endblock %}
 
-<body>
-<main class="container">
+{% block content %}
+<main class="container standard-page">
 
-    <header class="brand-header">
-        <a href="{{ url_for('home') }}">
-            <img
-                src="{{ url_for('static', filename='images/logo.png') }}"
-                alt="Cleaning Up Communities"
-                class="brand-logo"
-            >
-        </a>
-    </header>
-
-    <h1>Create a Clean-Up Event</h1>
+<h1>Create a Clean-Up Event</h1>
 
     <p>
         Organise a community clean-up mission by completing
@@ -119,6 +101,9 @@
             Click the map to select the exact clean-up location.
         </p>
 
+        <div class="location-toolbar"><label for="createMapCity">Start map near</label>
+        <select id="createMapCity"><option value="-31.9523,115.8613">Perth</option><option value="-33.8688,151.2093">Sydney</option><option value="-37.8136,144.9631">Melbourne</option><option value="-27.4698,153.0251">Brisbane</option><option value="-34.9285,138.6007">Adelaide</option><option value="-35.2809,149.1300">Canberra</option><option value="-42.8821,147.3272">Hobart</option><option value="-12.4634,130.8456">Darwin</option></select>
+        <button type="button" id="createUseLocation" class="btn">Use my location</button></div>
         <!-- MAP -->
         <div id="location-map"></div>
 
@@ -281,7 +266,9 @@
     </a>
 
 </main>
+{% endblock %}
 
+{% block scripts %}
 <script>
     // INITIALISE MAP
     const map = L.map("location-map").setView(
@@ -321,6 +308,17 @@
         }
     }
 
+    document.getElementById('createMapCity').addEventListener('change', event => {
+        const [lat, lng] = event.target.value.split(',').map(Number);
+        map.setView([lat, lng], 12);
+    });
+    document.getElementById('createUseLocation').addEventListener('click', () => {
+        if (!navigator.geolocation) { mapMessage.textContent = 'Location not supported.'; return; }
+        navigator.geolocation.getCurrentPosition(position => {
+            map.setView([position.coords.latitude, position.coords.longitude], 14);
+            mapMessage.textContent = 'Map moved. Click to select your event location.';
+        }, () => { mapMessage.textContent = 'Location permission denied or unavailable.'; });
+    });
     // SELECT LOCATION ON MAP
     map.on("click", function(event) {
         const latitude = event.latlng.lat;
@@ -390,6 +388,4 @@
             mapMessage.style.color = "";
         });
 </script>
-
-</body>
-</html>
+{% endblock %}

@@ -1,31 +1,11 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% block title %}My Registrations{% endblock %}
 
-    <title>My Registrations</title>
+{% block content %}
+    <main class="container standard-page">
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-    <main class="container">
-        
-        <header class="brand-header">
-            <a href="{{ url_for('home') }}">
-                <img
-                    src="{{ url_for('static', filename='images/logo.png') }}"
-                    alt="Cleaning Up Communities logo"
-                    class="brand-logo"
-                    style="max-width: 150px;"
-                >
-            </a>
-        </header>
-
-        <h1>My Registrations</h1>
+<h1>My Registrations</h1>
 
         <p>
             Enter your email address to access your
@@ -160,5 +140,4 @@
         </a>
 
     </main>
-</body>
-</html>
+{% endblock %}

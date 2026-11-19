@@ -58,6 +58,27 @@ def setup_database():
             CHECK (attendee_count >= 1)
         """)
 
+    # Track attendance for each registration
+    cursor.execute("PRAGMA table_info(registrations)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "attended" not in columns:
+        cursor.execute("""
+            ALTER TABLE registrations
+            ADD COLUMN attended INTEGER NOT NULL DEFAULT 0
+            CHECK (attended IN (0, 1))
+        """)
+
+    if "attendance_marked_at" not in columns:
+        cursor.execute("""
+            ALTER TABLE registrations ADD COLUMN attendance_marked_at TEXT
+        """)
+
+    if "attendance_marked_by" not in columns:
+        cursor.execute("""
+            ALTER TABLE registrations ADD COLUMN attendance_marked_by INTEGER
+        """)
+
     # Create users table for organiser accounts
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -72,6 +93,13 @@ def setup_database():
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Admin is a permission on approved organiser accounts.
+    # Existing role constraint only allows participant and organiser.
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = {column[1] for column in cursor.fetchall()}
+    if "is_admin" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_admin IN (0,1))")
 
     # Add missing columns to existing databases
     cursor.execute("PRAGMA table_info(events)")

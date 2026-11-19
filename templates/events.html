@@ -1,97 +1,157 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find Clean-Ups</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% extends "base.html" %}
+
+{% block title %}Find Clean-Ups | Cleaning Up Communities{% endblock %}
+
+{% block body_attributes %} class="explore-page"{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        .event-filters { display:flex; flex-wrap:wrap; gap:12px; margin:20px 0; align-items:center; }
-        .event-filters input, .event-filters select { flex:1 1 180px; min-width:0; }
-        #events-map { height:400px; width:100%; border-radius:12px; margin-bottom:20px; }
-        .event-actions { display:flex; flex-wrap:wrap; gap:10px; margin:20px 0; }
-        .event-status { font-weight:bold; }
-        .status-available { color:#28a745; }
-        .status-full { color:#e67e22; }
-        .status-past { color:#888; }
-        .map-pin { width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 1px 6px #0005; }
-        #eventCount { margin:16px 0; font-weight:bold; }
-        #noEvents { padding:20px; text-align:center; }
-        .popup-info { min-width:220px; max-width:270px; }
-        .popup-info h3 { margin:0 0 10px; }
-        .popup-info p { margin:6px 0; overflow-wrap:anywhere; }
-        .popup-info .btn { display:inline-block; margin-top:10px; }
-        .popup-info .btn:disabled { opacity:.5; cursor:not-allowed; }
-        .popup-warning { color:#a33123; font-weight:600; }
-    </style>
-</head>
-<body>
-<main class="container">
-    <header class="brand-header">
-        <a href="{{ url_for('home') }}">
-            <img src="{{ url_for('static', filename='images/logo.png') }}"
-                 alt="Cleaning Up Communities" class="brand-logo" style="max-width:100px;">
+{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<main class="explore-shell">
+    <!-- Navigation -->
+    <header class="home-header explore-header">
+        <a href="{{ url_for('home') }}" class="home-brand">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Cleaning Up Communities">
         </a>
+        
+        {% include 'partials/navbar.html' %}
+
+        {% include 'partials/profile_link.html' %}
     </header>
 
-    <h1>Find Clean-Ups</h1>
-    <p>Discover community clean-up events near you.</p>
+    <!-- Page introduction -->
+    <section class="explore-hero">
+        <div>
+            <span class="explore-eyebrow">🌱 EXPLORE YOUR COMMUNITY</span>
+            <h1>Find Your Next<br>Clean-Up Adventure.</h1>
+            <p>Find a local event, grab your mates and make a difference.</p>
+            <a class="explore-jump" href="#explore-results">Browse events <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="explore-hero-icon" aria-hidden="true">🧤<span>✨</span></div>
+    </section>
 
-    <div id="events-map" aria-label="Map of community clean-up events"></div>
-    <p>🟢 Available &nbsp; 🟠 Fully Booked &nbsp; ⚪ Past Event</p>
+    <!-- Map -->
+    <section class="explore-section" aria-labelledby="explore-map-title">
+        <div class="explore-section-title">
+            <div>
+                <span class="explore-kicker">THE NEIGHBOURHOOD</span>
+                <h2 id="explore-map-title">Explore the Map 🗺️</h2>
+            </div>
+            <p>Tap a marker to view an event.</p>
+        </div>
+        <div class="location-toolbar"><label for="mapCity">Map location</label>
+          <select id="mapCity"><option value="-31.9523,115.8613,11">Perth</option><option value="-33.8688,151.2093,11">Sydney</option><option value="-37.8136,144.9631,11">Melbourne</option><option value="-27.4698,153.0251,11">Brisbane</option><option value="-34.9285,138.6007,11">Adelaide</option><option value="-35.2809,149.1300,11">Canberra</option><option value="-42.8821,147.3272,11">Hobart</option><option value="-12.4634,130.8456,11">Darwin</option><option value="-36.8485,174.7633,11">Auckland</option><option value="51.5074,-0.1278,11">London</option><option value="40.7128,-74.0060,11">New York</option><option value="35.6762,139.6503,11">Tokyo</option></select>
+          <button type="button" id="useMyLocation" class="btn">Use my location</button><button type="button" id="showAllLocations" class="btn">Show all events</button>
+          <span id="locationFeedback" role="status" aria-live="polite"></span></div>
+        <div class="explore-map-frame">
+            <div id="events-map" role="region" aria-label="Map of community clean-up events"></div>
+            <div class="explore-map-legend" aria-label="Map marker legend">
+                <span><i class="legend-dot legend-available"></i> Available</span>
+                <span><i class="legend-dot legend-full"></i> Fully booked</span>
+                <span><i class="legend-dot legend-past"></i> Past event</span>
+            </div>
+        </div>
+    </section>
 
-    <div class="event-filters">
-        <input type="search" id="eventSearch" placeholder="Search event or location...">
-        <select id="statusFilter">
-            <option value="upcoming">Upcoming Events</option>
-            <option value="all">All Events</option>
-            <option value="past">Past Events</option>
-        </select>
-        <select id="availabilityFilter">
-            <option value="all">All Availability</option>
-            <option value="available">Spaces Available</option>
-            <option value="full">Fully Booked</option>
-        </select>
-        <input type="date" id="dateFilter">
-        <select id="sortFilter">
-            <option value="soonest">Soonest First</option>
-            <option value="latest">Latest First</option>
-        </select>
-        <button type="button" id="resetFilters" class="btn">Reset Filters</button>
-    </div>
+    <!-- Event filters -->
+    <section id="explore-results" class="explore-section" aria-labelledby="explore-events-title">
+        <div class="explore-section-title">
+            <div>
+                <span class="explore-kicker">FIND YOUR EVENT</span>
+                <h2 id="explore-events-title">Upcoming Clean-Ups 🌿</h2>
+            </div>
+            <p id="eventCount" aria-live="polite"></p>
+        </div>
 
-    <p id="eventCount" aria-live="polite"></p>
-    <div id="eventList">
-        {% for event in events %}
-        <section class="event-card"
-                 data-id="{{ event.id }}"
-                 data-date="{{ event.date }}"
-                 data-time="{{ event.time }}"
-                 data-registered="{{ event.registered }}"
-                 data-capacity="{{ event.capacity }}"
-                 data-search="{{ (event.name ~ ' ' ~ event.location)|lower }}">
-            <h2>{{ event.name }}</h2>
-            <p><strong>Date:</strong> {{ event.date }}</p>
-            <p><strong>Time:</strong> {{ event.time }}</p>
-            <p><strong>Location:</strong> {{ event.location }}</p>
-            <p><strong>Attendees:</strong> {{ event.registered }} / {{ event.capacity }}</p>
-            <p class="event-status"></p>
-            <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn">View Details</a>
-        </section>
-        {% endfor %}
-    </div>
+        <div class="explore-filter-panel">
+            <div class="explore-search-field">
+                <label for="eventSearch">Search</label>
+                <input type="search" id="eventSearch" placeholder="Search an event or location...">
+            </div>
+            <div class="explore-filter-grid">
+                <div>
+                    <label for="statusFilter">Events</label>
+                    <select id="statusFilter">
+                        <option value="upcoming">Upcoming Events</option>
+                        <option value="all">All Events</option>
+                        <option value="past">Past Events</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="availabilityFilter">Availability</label>
+                    <select id="availabilityFilter">
+                        <option value="all">All Availability</option>
+                        <option value="available">Spaces Available</option>
+                        <option value="full">Fully Booked</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="dateFilter">Date</label>
+                    <input type="date" id="dateFilter">
+                </div>
+                <div>
+                    <label for="sortFilter">Sort</label>
+                    <select id="sortFilter">
+                        <option value="soonest">Soonest First</option>
+                        <option value="latest">Latest First</option>
+                    </select>
+                </div>
+            </div>
+            <button type="button" id="resetFilters" class="explore-reset">↺ Reset filters</button>
+        </div>
 
-    <p id="noEvents" hidden>No events match your filters.</p>
-    <div class="event-actions">
-        <a href="{{ url_for('my_registrations') }}" class="btn">My Registrations</a>
-        <a href="{{ url_for('home') }}" class="btn">Back to Home</a>
-    </div>
+        <!-- Event cards -->
+        <div id="eventList" class="explore-event-grid">
+            {% for event in events %}
+            <article class="event-card explore-event-card"
+                     data-id="{{ event.id }}"
+                     data-date="{{ event.date }}"
+                     data-time="{{ event.time }}"
+                     data-registered="{{ event.registered }}"
+                     data-capacity="{{ event.capacity }}"
+                     data-search="{{ (event.name ~ ' ' ~ event.location)|lower }}">
+                <div class="explore-card-top">
+                    <span class="explore-card-emoji" aria-hidden="true">🌿</span>
+                    <span class="event-status" aria-label="Event availability"></span>
+                </div>
+                <h3>{{ event.name }}</h3>
+                <div class="explore-card-details">
+                    <p>📅 <span>{{ event.date }}</span></p>
+                    <p>🕒 <span>{{ event.time }}</span></p>
+                    <p>📍 <span>{{ event.location }}</span></p>
+                </div>
+                <div class="explore-card-bottom">
+                    <span class="explore-attendees">👥 {{ event.registered }} / {{ event.capacity }} attending</span>
+                    <a href="{{ url_for('event_details', event_id=event.id) }}" class="btn explore-card-button">View Event →</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        <div id="noEvents" class="explore-empty" hidden>
+            <span aria-hidden="true">🔎</span>
+            <h3>No clean-ups found</h3>
+            <p>Try changing your filters to see more events.</p>
+        </div>
+    </section>
+
+    <!-- Other pages -->
+    <footer class="explore-footer">
+        <a href="{{ url_for('my_registrations') }}">📋 My Registrations</a>
+        <a href="{{ url_for('home') }}">← Back to Home</a>
+    </footer>
 </main>
+{% endblock %}
 
+{% block scripts %}
 <script id="events-data" type="application/json">{{ map_events | tojson }}</script>
 <script>
+// Map and event data
+window.addEventListener('DOMContentLoaded', () => {
     const map = L.map('events-map').setView([-31.95, 115.86], 11);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -107,29 +167,38 @@
     const eventList = document.getElementById('eventList');
     const eventCount = document.getElementById('eventCount');
     const noEvents = document.getElementById('noEvents');
-    const eventCards = [...document.querySelectorAll('.event-card')];
+    const eventCards = [...document.querySelectorAll('.explore-event-card')];
     const markers = new Map();
 
+    // Use the start time when an event has a time range
+    function getStartDate(card) {
+        const startTime = (card.dataset.time || '').split('-')[0].trim();
+        const date = new Date(`${card.dataset.date}T${startTime}`);
+        return Number.isNaN(date.getTime()) ? new Date(`${card.dataset.date}T00:00`) : date;
+    }
+
     function getEventStatus(card) {
-        const eventDate = new Date(`${card.dataset.date}T${card.dataset.time}`);
         const spacesLeft = Math.max(0, Number(card.dataset.capacity) - Number(card.dataset.registered));
-        if (eventDate <= new Date()) {
-            return { type:'past', label:'Past Event', color:'#888888', spacesLeft };
+        if (getStartDate(card) <= new Date()) {
+            return { type: 'past', label: 'Past Event', color: '#888888', spacesLeft };
         }
         if (spacesLeft === 0) {
-            return { type:'full', label:'Fully Booked', color:'#e67e22', spacesLeft };
+            return { type: 'full', label: 'Fully Booked', color: '#e67e22', spacesLeft };
         }
-        return { type:'available', label:`${spacesLeft} spaces available`, color:'#28a745', spacesLeft };
+        return { type: 'available', label: `${spacesLeft} spaces available`, color: '#28a745', spacesLeft };
     }
 
     function createIcon(color) {
         return L.divIcon({
-            className:'',
-            html:`<div class="map-pin" style="background-color:${color}"></div>`,
-            iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-12]
+            className: '',
+            html: `<div class="map-pin" style="background-color:${color}"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
         });
     }
 
+    // Create popup text safely
     function addPopupInfo(popup, label, value) {
         const line = document.createElement('p');
         const heading = document.createElement('strong');
@@ -142,11 +211,9 @@
     function makePopup(event, status) {
         const popup = document.createElement('div');
         popup.className = 'popup-info';
-
         const title = document.createElement('h3');
         title.textContent = event.name;
         popup.appendChild(title);
-
         addPopupInfo(popup, 'Date', event.date);
         addPopupInfo(popup, 'Time', event.time);
         addPopupInfo(popup, 'Address', event.location);
@@ -167,7 +234,6 @@
                 ? 'Registration unavailable: this event has already started or finished.'
                 : 'Registration unavailable: this event is fully booked.';
             popup.appendChild(warning);
-
             const disabledJoin = document.createElement('button');
             disabledJoin.type = 'button';
             disabledJoin.className = 'btn';
@@ -178,19 +244,15 @@
         return popup;
     }
 
-    eventCards.forEach(card => {
-        const status = getEventStatus(card);
-        const statusElement = card.querySelector('.event-status');
-        statusElement.textContent = status.label;
-        statusElement.classList.add(`status-${status.type}`);
-    });
-
+    // Only add markers with valid coordinates
     mapEvents.forEach(event => {
         const card = eventCards.find(item => Number(item.dataset.id) === Number(event.id));
-        if (!card) return;
+        if (!card || !Number.isFinite(Number(event.latitude)) || !Number.isFinite(Number(event.longitude)) ||
+            event.latitude == null || event.longitude == null || event.latitude === '' || event.longitude === '') return;
+
         const status = getEventStatus(card);
-        const marker = L.marker([event.latitude, event.longitude], {
-            icon:createIcon(status.color)
+        const marker = L.marker([Number(event.latitude), Number(event.longitude)], {
+            icon: createIcon(status.color)
         }).addTo(map);
         marker.bindPopup(makePopup(event, status));
         marker.on('popupopen', () => {
@@ -201,17 +263,15 @@
         markers.set(Number(event.id), marker);
     });
 
+    // Search, filter, sort and update the map together
     function filterEvents() {
         const search = searchInput.value.trim().toLowerCase();
-        const now = new Date();
         let visibleCount = 0;
 
         eventCards.forEach(card => {
-            const eventDate = new Date(`${card.dataset.date}T${card.dataset.time}`);
-            const isPast = eventDate <= now;
-            const registered = Number(card.dataset.registered);
-            const capacity = Number(card.dataset.capacity);
-            const isFull = registered >= capacity;
+            const status = getEventStatus(card);
+            const isPast = status.type === 'past';
+            const isFull = Number(card.dataset.registered) >= Number(card.dataset.capacity);
             const matchesSearch = card.dataset.search.includes(search);
             const matchesStatus = statusFilter.value === 'all' ||
                 (statusFilter.value === 'past' && isPast) ||
@@ -226,23 +286,23 @@
             card.style.display = visible ? '' : 'none';
             if (visible) visibleCount++;
 
+            const statusElement = card.querySelector('.event-status');
+            statusElement.textContent = status.label;
+            statusElement.className = `event-status status-${status.type}`;
+
             const marker = markers.get(Number(card.dataset.id));
             if (marker) {
-                const status = getEventStatus(card);
                 marker.setIcon(createIcon(status.color));
                 if (visible && !map.hasLayer(marker)) marker.addTo(map);
                 if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
             }
         });
 
-        const sortedCards = [...eventCards].sort((a, b) => {
-            const dateA = `${a.dataset.date}T${a.dataset.time}`;
-            const dateB = `${b.dataset.date}T${b.dataset.time}`;
-            return sortFilter.value === 'latest'
-                ? dateB.localeCompare(dateA)
-                : dateA.localeCompare(dateB);
-        });
-        sortedCards.forEach(card => eventList.appendChild(card));
+        [...eventCards].sort((a, b) => {
+            const difference = getStartDate(a) - getStartDate(b);
+            return sortFilter.value === 'latest' ? -difference : difference;
+        }).forEach(card => eventList.appendChild(card));
+
         eventCount.textContent = `${visibleCount} event${visibleCount === 1 ? '' : 's'} found`;
         noEvents.hidden = visibleCount !== 0;
     }
@@ -260,6 +320,37 @@
     });
 
     filterEvents();
+});
+
+    // Change map centre without changing the event filters.
+    const cityPicker = document.getElementById('mapCity');
+    const locationFeedback = document.getElementById('locationFeedback');
+    const moveMap = (lat, lng, zoom=11) => { map.setView([lat, lng], zoom); };
+    cityPicker.addEventListener('change', () => {
+        const [lat, lng, zoom] = cityPicker.value.split(',').map(Number);
+        moveMap(lat, lng, zoom);
+        localStorage.setItem('cleanup_map_location', cityPicker.value);
+        locationFeedback.textContent = 'Map moved. All events remain available.';
+    });
+    const previousLocation = localStorage.getItem('cleanup_map_location');
+    if (previousLocation && [...cityPicker.options].some(o => o.value === previousLocation)) {
+        cityPicker.value = previousLocation;
+        const [lat, lng, zoom] = previousLocation.split(',').map(Number);
+        moveMap(lat, lng, zoom);
+    }
+    document.getElementById('useMyLocation').addEventListener('click', () => {
+        if (!navigator.geolocation) { locationFeedback.textContent = 'Location is not supported in this browser.'; return; }
+        locationFeedback.textContent = 'Requesting permission…';
+        navigator.geolocation.getCurrentPosition(
+            position => { moveMap(position.coords.latitude, position.coords.longitude, 12); locationFeedback.textContent = 'Map centred on your location.'; },
+            () => { locationFeedback.textContent = 'Location unavailable or permission denied.'; },
+            {timeout: 10000, enableHighAccuracy: false}
+        );
+    });
+    document.getElementById('showAllLocations').addEventListener('click', () => {
+        const activeMarkers = [...markers.values()].filter(marker => map.hasLayer(marker));
+        if (activeMarkers.length) map.fitBounds(L.featureGroup(activeMarkers).getBounds().pad(0.12));
+        locationFeedback.textContent = activeMarkers.length ? 'Showing all matching event locations.' : 'No visible event markers.';
+    });
 </script>
-</body>
-</html>
+{% endblock %}
