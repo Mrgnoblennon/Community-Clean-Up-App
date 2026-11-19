@@ -1,40 +1,15 @@
 {% extends "base.html" %}
-
-{% block title %}Participant Login{% endblock %}
-
+{% block title %}Welcome Back | Clean-Up Communities{% endblock %}
 {% block content %}
-    <main class="container standard-page">
-
-        <header class="site-header">
-            <h1>Welcome Back!</h1>
-            <p>Ready to make another difference?</p>
-        </header>
-
-        <section class="event-card">
-            <h2>Participant Login</h2>
-
-            <form method="POST" action="{{ url_for('participant_login') }}">
-
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" autocomplete="email"
-                       placeholder="you@example.com" required>
-
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" autocomplete="current-password"
-                       placeholder="Your password" required>
-
-                <button type="submit" class="btn">Log In</button>
-            </form>
-
-            <p class="auth-footer">
-                New to the community?
-                <a href="{{ url_for('register_participant') }}">Create an Account</a>
-            </p>
-        </section>
-
-        <div class="home-actions">
-            <a href="{{ url_for('home') }}" class="btn">Back to Home</a>
-        </div>
-
-    </main>
+<main class="container standard-page auth-shell">
+ <header class="auth-intro"><span class="auth-eyebrow">🌱 CLEANING UP COMMUNITIES</span><h1>Welcome Back</h1><p>Your next clean-up adventure starts here.</p></header>
+ <section class="event-card auth-card"><div class="auth-card-icon" aria-hidden="true">👋</div><h2>Sign in to continue</h2>
+ <form method="POST" action="{{ url_for('participant_login') }}" class="auth-form">
+ 
+ <label for="email">Email address</label><input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required>
+ <label for="password">Password</label><input type="password" id="password" name="password" autocomplete="current-password" placeholder="Your password"  required>
+ <button type="submit" class="btn auth-submit">Log In</button>
+ </form><p class="auth-footer"><a href="{{ url_for('register_participant') }}">Need an account? Register</a></p>
+ </section><div class="auth-bottom"><a href="{{ url_for('organiser_login') }}">Organiser sign in</a> · <a href="{{ url_for('home') }}">Back to home</a></div>
+</main>
 {% endblock %}

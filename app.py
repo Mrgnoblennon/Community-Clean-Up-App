@@ -23,7 +23,7 @@ def inject_current_user():
     connection.row_factory = sqlite3.Row
 
     user = connection.execute("""
-        SELECT id, name, email, role
+        SELECT id, name, email, role, is_admin
         FROM users
         WHERE id = ? AND role = ?
     """, (user_id, role)).fetchone()
@@ -49,8 +49,8 @@ def events():
     cursor = connection.cursor()
 
     cursor.execute(
-        "SELECT * FROM events WHERE name LIKE ?",
-        (f"%{search}%",)
+        "SELECT * FROM events WHERE name LIKE ? OR location LIKE ?",
+        (f"%{search}%", f"%{search}%",)
     )
 
     cleanup_events = cursor.fetchall()
@@ -961,20 +961,149 @@ def participant_dashboard():
         FROM registrations
         JOIN events ON registrations.event_id = events.id
         WHERE registrations.user_id = ?
-          AND datetime(events.date || ' ' || events.time) > ?
         ORDER BY events.date, events.time
-    """, (
-        participant_id,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )).fetchall()
+    """, (participant_id,)).fetchall()
+
+    # Count confirmed attendance, not future bookings
+    attendance = connection.execute("""
+        SELECT COUNT(*) AS attended_events,
+               COALESCE(SUM(attendee_count), 0) AS confirmed_places
+        FROM registrations
+        WHERE user_id = ? AND attended = 1
+    """, (participant_id,)).fetchone()
 
     connection.close()
+
+    upcoming = []
+    for event in upcoming_events:
+        try:
+            start_time = datetime.strptime(
+                f"{event['date']} {event['time'].split('-')[0].strip()}",
+                "%Y-%m-%d %H:%M"
+            )
+            if start_time > datetime.now():
+                upcoming.append(event)
+        except (ValueError, AttributeError):
+            continue
 
     return render_template(
         "participant_dashboard.html",
         user=user,
-        upcoming_events=upcoming_events,
-        upcoming_count=len(upcoming_events)
+        upcoming_events=upcoming,
+        upcoming_count=len(upcoming),
+        attended_count=attendance["attended_events"],
+        confirmed_places=attendance["confirmed_places"]
+    )
+
+
+# Organisers can confirm attendance after an event starts
+@app.route("/organiser/attendance", methods=["GET", "POST"])
+def organiser_attendance():
+    organiser_id = session.get("organiser_id")
+    if not organiser_id:
+        return redirect(url_for("organiser_login"))
+
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+    organiser = connection.execute("""
+        SELECT id FROM users
+        WHERE id = ? AND role = 'organiser' AND approved = 1
+    """, (organiser_id,)).fetchone()
+
+    if not organiser:
+        connection.close()
+        session.pop("organiser_id", None)
+        return redirect(url_for("organiser_login"))
+
+    # Use a session token for attendance updates
+    if "attendance_token" not in session:
+        session["attendance_token"] = secrets.token_urlsafe(32)
+
+    error = None
+    if request.method == "POST":
+        if not secrets.compare_digest(
+            request.form.get("attendance_token", ""), session["attendance_token"]
+        ):
+            connection.close()
+            return "Invalid request", 400
+
+        try:
+            registration_id = int(request.form.get("registration_id", ""))
+            attended = int(request.form.get("attended", ""))
+            if attended not in (0, 1):
+                raise ValueError
+        except (ValueError, TypeError):
+            connection.close()
+            return "Invalid attendance update", 400
+
+        # Only allow attendance changes once the event has started
+        registration = connection.execute("""
+            SELECT registrations.id, events.date, events.time
+            FROM registrations
+            JOIN events ON events.id = registrations.event_id
+            WHERE registrations.id = ?
+        """, (registration_id,)).fetchone()
+
+        if not registration:
+            connection.close()
+            return "Registration not found", 404
+
+        try:
+            start_time = datetime.strptime(
+                f"{registration['date']} {registration['time'].split('-')[0].strip()}",
+                "%Y-%m-%d %H:%M"
+            )
+        except (ValueError, AttributeError):
+            connection.close()
+            return "Invalid event date or time", 400
+
+        if start_time > datetime.now():
+            connection.close()
+            return "Attendance cannot be recorded before an event starts", 400
+
+        connection.execute("""
+            UPDATE registrations
+            SET attended = ?, attendance_marked_at = ?, attendance_marked_by = ?
+            WHERE id = ?
+        """, (
+            attended,
+            datetime.now().isoformat(timespec="seconds") if attended else None,
+            organiser_id if attended else None,
+            registration_id
+        ))
+        connection.commit()
+        connection.close()
+        return redirect(url_for("organiser_attendance", updated=1))
+
+    # Show bookings for events that have started
+    rows = connection.execute("""
+        SELECT registrations.id AS registration_id, registrations.name AS participant_name,
+               registrations.email, registrations.attendee_count,
+               registrations.attended, registrations.user_id,
+               events.id AS event_id, events.name AS event_name,
+               events.date, events.time, events.location
+        FROM registrations
+        JOIN events ON events.id = registrations.event_id
+        ORDER BY events.date DESC, events.time DESC, registrations.id
+    """).fetchall()
+    connection.close()
+
+    started_events = []
+    for row in rows:
+        try:
+            start_time = datetime.strptime(
+                f"{row['date']} {row['time'].split('-')[0].strip()}",
+                "%Y-%m-%d %H:%M"
+            )
+        except (ValueError, AttributeError):
+            continue
+        if start_time <= datetime.now():
+            started_events.append(row)
+
+    return render_template(
+        "organiser_attendance.html",
+        registrations=started_events,
+        attendance_token=session["attendance_token"]
     )
 
 
@@ -1032,3 +1161,29 @@ def already_registered(event_id):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_dashboard():
+    organiser_id = session.get("organiser_id")
+    if not organiser_id:
+        return redirect(url_for("organiser_login"))
+    connection = sqlite3.connect("instance/cleanup.db")
+    connection.row_factory = sqlite3.Row
+    admin = connection.execute("SELECT id FROM users WHERE id=? AND role='organiser' AND is_admin=1", (organiser_id,)).fetchone()
+    if not admin:
+        connection.close()
+        return "Admin access required", 403
+    message = None
+    if request.method == "POST":
+        try:
+            target_id = int(request.form.get("user_id", "0"))
+        except ValueError:
+            target_id = 0
+        action = request.form.get("action")
+        if action in ("approve", "revoke"):
+            connection.execute("UPDATE users SET approved=? WHERE id=? AND role='organiser' AND is_admin=0", (1 if action == "approve" else 0, target_id))
+            connection.commit()
+            message = "Organiser approval updated."
+    organisers = connection.execute("SELECT id,name,email,approved FROM users WHERE role='organiser' AND is_admin=0 ORDER BY id DESC").fetchall()
+    connection.close()
+    return render_template("admin.html", organisers=organisers, message=message)

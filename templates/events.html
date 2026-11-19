@@ -6,7 +6,7 @@
 
 {% block head_extra %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% endblock %}
 
 {% block header %}{% endblock %}
@@ -44,6 +44,10 @@
             </div>
             <p>Tap a marker to view an event.</p>
         </div>
+        <div class="location-toolbar"><label for="mapCity">Map location</label>
+          <select id="mapCity"><option value="-31.9523,115.8613,11">Perth</option><option value="-33.8688,151.2093,11">Sydney</option><option value="-37.8136,144.9631,11">Melbourne</option><option value="-27.4698,153.0251,11">Brisbane</option><option value="-34.9285,138.6007,11">Adelaide</option><option value="-35.2809,149.1300,11">Canberra</option><option value="-42.8821,147.3272,11">Hobart</option><option value="-12.4634,130.8456,11">Darwin</option><option value="-36.8485,174.7633,11">Auckland</option><option value="51.5074,-0.1278,11">London</option><option value="40.7128,-74.0060,11">New York</option><option value="35.6762,139.6503,11">Tokyo</option></select>
+          <button type="button" id="useMyLocation" class="btn">Use my location</button><button type="button" id="showAllLocations" class="btn">Show all events</button>
+          <span id="locationFeedback" role="status" aria-live="polite"></span></div>
         <div class="explore-map-frame">
             <div id="events-map" role="region" aria-label="Map of community clean-up events"></div>
             <div class="explore-map-legend" aria-label="Map marker legend">
@@ -317,5 +321,36 @@ window.addEventListener('DOMContentLoaded', () => {
 
     filterEvents();
 });
+
+    // Change map centre without changing the event filters.
+    const cityPicker = document.getElementById('mapCity');
+    const locationFeedback = document.getElementById('locationFeedback');
+    const moveMap = (lat, lng, zoom=11) => { map.setView([lat, lng], zoom); };
+    cityPicker.addEventListener('change', () => {
+        const [lat, lng, zoom] = cityPicker.value.split(',').map(Number);
+        moveMap(lat, lng, zoom);
+        localStorage.setItem('cleanup_map_location', cityPicker.value);
+        locationFeedback.textContent = 'Map moved. All events remain available.';
+    });
+    const previousLocation = localStorage.getItem('cleanup_map_location');
+    if (previousLocation && [...cityPicker.options].some(o => o.value === previousLocation)) {
+        cityPicker.value = previousLocation;
+        const [lat, lng, zoom] = previousLocation.split(',').map(Number);
+        moveMap(lat, lng, zoom);
+    }
+    document.getElementById('useMyLocation').addEventListener('click', () => {
+        if (!navigator.geolocation) { locationFeedback.textContent = 'Location is not supported in this browser.'; return; }
+        locationFeedback.textContent = 'Requesting permission…';
+        navigator.geolocation.getCurrentPosition(
+            position => { moveMap(position.coords.latitude, position.coords.longitude, 12); locationFeedback.textContent = 'Map centred on your location.'; },
+            () => { locationFeedback.textContent = 'Location unavailable or permission denied.'; },
+            {timeout: 10000, enableHighAccuracy: false}
+        );
+    });
+    document.getElementById('showAllLocations').addEventListener('click', () => {
+        const activeMarkers = [...markers.values()].filter(marker => map.hasLayer(marker));
+        if (activeMarkers.length) map.fitBounds(L.featureGroup(activeMarkers).getBounds().pad(0.12));
+        locationFeedback.textContent = activeMarkers.length ? 'Showing all matching event locations.' : 'No visible event markers.';
+    });
 </script>
 {% endblock %}

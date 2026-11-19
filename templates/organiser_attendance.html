@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Track Attendance | Cleaning Up Communities{% endblock %}
+
+{% block content %}
+<main class="container attendance-page">
+    <!-- organiser attendance -->
+    <section class="attendance-hero">
+        <span>🌱 ORGANISER TOOLS</span>
+        <h1>Track Attendance</h1>
+        <p>Confirm who attended each clean-up after it starts.</p>
+        <a href="{{ url_for('create_event') }}">← Create Event</a>
+    </section>
+
+    {% if request.args.get('updated') %}
+        <p class="success-message" role="status">Attendance updated.</p>
+    {% endif %}
+
+    {% if registrations %}
+        <div class="attendance-list">
+            {% for registration in registrations %}
+                <article class="attendance-card">
+                    <div>
+                        <span class="attendance-tag">{{ registration.date }} · {{ registration.time }}</span>
+                        <h2>{{ registration.event_name }}</h2>
+                        <p>📍 {{ registration.location }}</p>
+                        <h3>{{ registration.participant_name }}</h3>
+                        <p>{{ registration.email }}</p>
+                        <p>👥 {{ registration.attendee_count }} reserved place(s)</p>
+                        {% if not registration.user_id %}
+                            <p class="attendance-note">Guest booking — not linked to an account</p>
+                        {% endif %}
+                    </div>
+                    <div class="attendance-control">
+                        {% if registration.attended %}
+                            <span class="attendance-status is-confirmed">✓ Attended</span>
+                        {% else %}
+                            <span class="attendance-status">Not confirmed</span>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('organiser_attendance') }}">
+                            <input type="hidden" name="attendance_token" value="{{ attendance_token }}">
+                            <input type="hidden" name="registration_id" value="{{ registration.registration_id }}">
+                            <input type="hidden" name="attended" value="{{ 0 if registration.attended else 1 }}">
+                            <button type="submit" class="btn">
+                                {{ 'Undo Attendance' if registration.attended else 'Confirm Attendance' }}
+                            </button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <section class="event-card">
+            <h2>No attendance to record yet</h2>
+            <p>Registrations will appear here once their events have started.</p>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

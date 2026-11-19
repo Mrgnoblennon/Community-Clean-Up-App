@@ -1,1 +1,14 @@
-<!-- unused placeholder - no Flask route currently renders this template -->
+{% extends "base.html" %}
+{% block title %}Admin | Clean-Up Communities{% endblock %}
+{% block content %}
+<main class="container standard-page auth-shell">
+ <div class="auth-intro"><span class="auth-eyebrow">COMMUNITY CONTROL</span><h1>Admin Dashboard 🛡️</h1><p>Review and approve organiser accounts.</p></div>
+ {% if message %}<p class="auth-message" role="status">{{ message }}</p>{% endif %}
+ <section class="event-card"><h2>Organiser approvals</h2>
+ {% for user in organisers %}
+ <div class="admin-user"><div><strong>{{ user.name }}</strong><p>{{ user.email }} · {{ 'Approved' if user.approved else 'Pending approval' }}</p></div>
+ <form method="POST"><input type="hidden" name="user_id" value="{{ user.id }}"><input type="hidden" name="action" value="{{ 'revoke' if user.approved else 'approve' }}"><button class="btn" type="submit">{{ 'Revoke' if user.approved else 'Approve' }}</button></form></div>
+ {% else %}<p>No organiser accounts yet.</p>{% endfor %}
+ </section>
+</main>
+{% endblock %}

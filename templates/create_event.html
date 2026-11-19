@@ -101,6 +101,9 @@
             Click the map to select the exact clean-up location.
         </p>
 
+        <div class="location-toolbar"><label for="createMapCity">Start map near</label>
+        <select id="createMapCity"><option value="-31.9523,115.8613">Perth</option><option value="-33.8688,151.2093">Sydney</option><option value="-37.8136,144.9631">Melbourne</option><option value="-27.4698,153.0251">Brisbane</option><option value="-34.9285,138.6007">Adelaide</option><option value="-35.2809,149.1300">Canberra</option><option value="-42.8821,147.3272">Hobart</option><option value="-12.4634,130.8456">Darwin</option></select>
+        <button type="button" id="createUseLocation" class="btn">Use my location</button></div>
         <!-- MAP -->
         <div id="location-map"></div>
 
@@ -305,6 +308,17 @@
         }
     }
 
+    document.getElementById('createMapCity').addEventListener('change', event => {
+        const [lat, lng] = event.target.value.split(',').map(Number);
+        map.setView([lat, lng], 12);
+    });
+    document.getElementById('createUseLocation').addEventListener('click', () => {
+        if (!navigator.geolocation) { mapMessage.textContent = 'Location not supported.'; return; }
+        navigator.geolocation.getCurrentPosition(position => {
+            map.setView([position.coords.latitude, position.coords.longitude], 14);
+            mapMessage.textContent = 'Map moved. Click to select your event location.';
+        }, () => { mapMessage.textContent = 'Location permission denied or unavailable.'; });
+    });
     // SELECT LOCATION ON MAP
     map.on("click", function(event) {
         const latitude = event.latlng.lat;
