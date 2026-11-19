@@ -1797,3 +1797,14 @@ fieldset.event-card legend {
 .admin-user { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #d9e9d9; }
 .admin-user p { margin:4px 0; opacity:.7; overflow-wrap:anywhere; }
 @media(max-width:520px){ .admin-user { flex-direction:column; align-items:flex-start; } }
+<<<<<<< HEAD
+=======
+
+/* Attendance event groups */
+.attendance-event-group { padding: 22px; background: var(--surface); border: 2px solid var(--border); border-bottom-width: 5px; border-radius: 20px; }
+.attendance-event-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.attendance-event-heading h2 { margin: 8px 0; }
+.attendance-event-group .attendance-card { margin-top: 14px; box-shadow: none; }
+.attendance-empty { margin-top: 16px; color: var(--muted); }
+.attendance-test-banner { margin-top: 18px; padding: 14px 18px; background: #fff5cf; border: 1px solid #e2c875; border-radius: 12px; }
+>>>>>>> US-04-track-stats
