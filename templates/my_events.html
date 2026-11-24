@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="container standard-page"><h1>My Events</h1><a class="btn" href="{{ url_for('create_event') }}">Create Event</a>
+{% for event in events %}<section class="event-card"><h2>{{ event.name }}</h2><p>{{ event.date }} · {{ event.time }} · {{ event.location }}</p><p>{{ event.registered }} / {{ event.capacity }} registered</p>{% if event.cancelled %}<p>Cancelled: {{ event.cancellation_reason }}</p>{% endif %}<a class="btn" href="{{ url_for('event_details',event_id=event.id) }}">Manage Event</a></section>{% else %}<p>You haven't organised any events yet.</p>{% endfor %}</main>
+{% endblock %}
