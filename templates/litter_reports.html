@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Report Litter{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endblock %}
+{% block content %}
+<main class="container standard-page"><h1>Report Litter</h1><p>Help organisers find areas that need cleaning.</p><div id="litter-map" style="height:400px;border-radius:12px"></div>
+{% if can_report %}<form method="post" enctype="multipart/form-data" id="report-form"><input type="hidden" name="csrf_token" value="{{ token }}"><input type="hidden" name="latitude" id="lat"><input type="hidden" name="longitude" id="lng"><p id="selection" role="status">Click the map to select a location.</p><label for="description">Description (optional)</label><textarea name="description" id="description" maxlength="2000"></textarea><label for="photo">Photo (optional, JPEG up to 5 MB)</label><input type="file" name="photo" id="photo" accept="image/jpeg"><button class="btn" type="submit">Submit Report</button></form>{% else %}<p><a href="{{ url_for('participant_login') }}">Log in</a> to submit a report.</p>{% endif %}
+<h2>Reported locations</h2>{% for report in reports %}<section class="event-card"><p>{{ report.description or 'Litter reported' }}</p><p>{{ report.created_at }}</p>{% if report.has_photo %}<img style="max-width:100%;max-height:240px" src="{{ url_for('litter_photo',report_id=report.id) }}" alt="Reported litter">{% endif %}</section>{% else %}<p>No reports yet.</p>{% endfor %}</main>
+{% endblock %}
+{% block scripts %}<script>
+const map=L.map('litter-map').setView([-31.95,115.86],11);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const reports={{ reports|tojson }};
+reports.forEach(r=>{const p=document.createElement('div');p.textContent=r.description||'Litter reported';L.circleMarker([r.latitude,r.longitude],{color:'#b66a20',radius:8}).addTo(map).bindPopup(p);});
+const form=document.getElementById('report-form');let pin;
+if(form){map.on('click',e=>{document.getElementById('lat').value=e.latlng.lat;document.getElementById('lng').value=e.latlng.lng;if(pin)pin.setLatLng(e.latlng);else pin=L.marker(e.latlng).addTo(map);document.getElementById('selection').textContent='Location selected.';});form.addEventListener('submit',e=>{if(!pin){e.preventDefault();document.getElementById('selection').textContent='Please select a location first.';}});}
+</script>{% endblock %}
