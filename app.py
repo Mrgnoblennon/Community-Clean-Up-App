@@ -1402,6 +1402,71 @@ def litter_photo(report_id):
         return "Photo not found",404
     return Response(row[0],mimetype=litter_image_type(row[0]) or "application/octet-stream",headers={"X-Content-Type-Options":"nosniff"})
 
+
+# US-09: edit organiser-owned events and retain change notices.
+with sqlite3.connect("instance/cleanup.db") as connection:
+    for name in ("meeting_point", "contact_details"):
+        if name not in {row[1] for row in connection.execute("PRAGMA table_info(events)")}:
+            connection.execute(f"ALTER TABLE events ADD COLUMN {name} TEXT")
+    connection.execute("""CREATE TABLE IF NOT EXISTS event_change_notifications (
+        id INTEGER PRIMARY KEY, event_id INTEGER NOT NULL, email TEXT NOT NULL,
+        message TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
+
+@app.route("/events/<int:event_id>/edit", methods=["GET","POST"])
+def edit_event(event_id):
+    from rewards import verify_csrf
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        connection.row_factory = sqlite3.Row
+        if request.method == "POST":
+            verify_csrf()
+            connection.execute("BEGIN IMMEDIATE")
+        event = connection.execute("""SELECT e.* FROM events e JOIN users u ON u.id=e.organiser_id
+            WHERE e.id=? AND u.id=? AND u.role='organiser' AND u.approved=1""",
+            (event_id,session.get("organiser_id"))).fetchone()
+        if not event:
+            return "Event not found or access denied",403
+        if event["cancelled"]:
+            return "Cancelled events cannot be edited",400
+        times = event["time"].split("-")
+        start = datetime.strptime(event["date"]+" "+times[0].strip(),"%Y-%m-%d %H:%M")
+        started = start <= datetime.now()
+        if len(times)>1 and datetime.strptime(event["date"]+" "+times[1].strip(),"%Y-%m-%d %H:%M") <= datetime.now():
+            return "Finished events cannot be edited",400
+        values = dict(event)
+        values["start_time"] = times[0].strip()
+        values["end_time"] = times[1].strip() if len(times)>1 else ""
+        def page(error=None):
+            return render_template("edit_event.html",event=values,started=started,token=csrf(),error=error)
+        if request.method == "GET":
+            return page()
+        fields = ["safety_instructions","meeting_point","contact_details"]
+        if not started:
+            fields += ["name","location","description","equipment","date","capacity","latitude","longitude"]
+        for field in fields:
+            if field in request.form:
+                values[field] = request.form[field].strip()
+        if not started:
+            values["start_time"] = request.form.get("start_time","")
+            values["end_time"] = request.form.get("end_time","")
+            try:
+                new_start = datetime.strptime(values["date"]+" "+values["start_time"],"%Y-%m-%d %H:%M")
+                new_end = datetime.strptime(values["date"]+" "+values["end_time"],"%Y-%m-%d %H:%M")
+                values["capacity"] = int(values["capacity"])
+                values["latitude"] = float(values["latitude"])
+                values["longitude"] = float(values["longitude"])
+                if not values["name"] or not values["location"] or new_start <= datetime.now() or new_end <= new_start or values["capacity"] < max(1,event["registered"]) or not (-90 <= values["latitude"] <= 90 and -180 <= values["longitude"] <= 180):
+                    raise ValueError
+            except (ValueError,TypeError):
+                return page("Check dates, map location and capacity. Capacity cannot be below existing registrations."),400
+            values["time"] = values["start_time"]+"-"+values["end_time"]
+            fields.append("time")
+        changed = [field for field in fields if values[field] != event[field]]
+        if changed:
+            connection.execute("UPDATE events SET "+",".join(field+"=?" for field in changed)+" WHERE id=?", [values[field] for field in changed]+[event_id])
+            notice = "Event updated: "+", ".join(field.replace("_"," ") for field in changed)+". Check the event page for details."
+            connection.execute("INSERT INTO event_change_notifications(event_id,email,message) SELECT ?,LOWER(email),? FROM registrations WHERE event_id=? GROUP BY LOWER(email)",(event_id,notice,event_id))
+        return redirect(url_for("event_details",event_id=event_id))
+
 from rewards import register_reward_routes
 register_reward_routes(app)
 
