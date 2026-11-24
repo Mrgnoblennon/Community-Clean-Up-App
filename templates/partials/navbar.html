@@ -16,6 +16,7 @@
             <a href="{{ url_for('admin_dashboard') }}">Admin</a>
         {% endif %}
     {% endif %}
+    <a href="{{ url_for('donations') }}">Donate</a>
     <a href="{{ url_for('rewards_shop') }}">Rewards Shop</a>
     {% if session.get('business_id') %}<a href="{{ url_for('business_dashboard') }}">Business Dashboard</a>{% else %}<a href="{{ url_for('business_login') }}">Business Login</a>{% endif %}
 </nav>
