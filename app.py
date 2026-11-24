@@ -41,6 +41,39 @@ verification_codes = {}
 init_rewards()
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
+# US-06: cancellation migration
+with sqlite3.connect("instance/cleanup.db") as connection:
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(events)")}
+    if "cancelled" not in columns:
+        connection.execute("ALTER TABLE events ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0")
+    if "cancellation_reason" not in columns:
+        connection.execute("ALTER TABLE events ADD COLUMN cancellation_reason TEXT")
+    connection.execute("CREATE TABLE IF NOT EXISTS cancellation_notifications (event_id INTEGER, email TEXT, reason TEXT, PRIMARY KEY(event_id,email))")
+
+@app.route("/events/<int:event_id>/cancel-event", methods=["POST"])
+def cancel_event(event_id):
+    from rewards import verify_csrf
+    verify_csrf()
+    reason = request.form.get("reason", "").strip()
+    if not reason or len(reason) > 1000 or request.form.get("confirm") != "yes":
+        return "A cancellation reason and confirmation are required", 400
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("BEGIN IMMEDIATE")
+        event = connection.execute("SELECT e.* FROM events e JOIN users u ON u.id=e.organiser_id WHERE e.id=? AND u.id=? AND u.role='organiser' AND u.approved=1", (event_id, session.get("organiser_id"))).fetchone()
+        if not event:
+            return "Event not found or access denied", 403
+        if event["cancelled"]:
+            return redirect(url_for("event_details", event_id=event_id))
+        if datetime.strptime(f"{event['date']} {event['time'].split('-')[0].strip()}", "%Y-%m-%d %H:%M") <= datetime.now():
+            return "Only future events can be cancelled", 400
+        if connection.execute("SELECT 1 FROM registrations WHERE event_id=? AND attended=1", (event_id,)).fetchone():
+            return "Cannot cancel an event with confirmed attendance", 400
+        connection.execute("UPDATE events SET cancelled=1,cancellation_reason=? WHERE id=?", (reason,event_id))
+        connection.execute("INSERT OR IGNORE INTO cancellation_notifications SELECT event_id,LOWER(email),? FROM registrations WHERE event_id=?", (reason,event_id))
+    return redirect(url_for("event_details", event_id=event_id))
+
+
 @app.route("/")
 def home():
   return render_template("index.html")
@@ -124,7 +157,8 @@ def event_details(event_id):
     return render_template(
         "event_details.html",
         event=event,
-        event_has_started=event_has_started
+        event_has_started=event_has_started,
+        cancellation_token=csrf()
     )
 
 
@@ -153,13 +187,15 @@ def join_event(event_id):
         cursor.execute("BEGIN IMMEDIATE")
 
         event = cursor.execute("""
-            SELECT capacity, registered, date, time
+            SELECT capacity, registered, date, time, cancelled
             FROM events
             WHERE id = ?
         """, (event_id,)).fetchone()
 
         if event is None:
             return "Event not found", 404
+        if event["cancelled"]:
+            return "This event has been cancelled", 400
 
         event_start = datetime.strptime(
             f"{event['date']} {event['time'].split('-')[0].strip()}",
@@ -266,13 +302,15 @@ def edit_registration(registration_id):
 
         # Get current event capacity
         event = cursor.execute("""
-            SELECT capacity, registered, date, time
+            SELECT capacity, registered, date, time, cancelled
             FROM events
             WHERE id = ?
         """, (registration["event_id"],)).fetchone()
 
         if event is None:
             return "Event not found", 404
+        if event["cancelled"]:
+            return "This event has been cancelled", 400
 
         if request.method == "POST":
             name = request.form.get("name", "").strip()
@@ -1102,7 +1140,7 @@ def organiser_attendance():
             return "Invalid attendance update", 400
 
         registration = connection.execute("""
-            SELECT registrations.id, events.id AS event_id, events.date, events.time
+            SELECT registrations.id, events.id AS event_id, events.date, events.time, events.cancelled
             FROM registrations JOIN events ON events.id = registrations.event_id
             WHERE registrations.id = ?
               AND (events.organiser_id = ? OR ? = 1)
@@ -1110,6 +1148,9 @@ def organiser_attendance():
         if not registration:
             connection.close()
             return "Registration not found", 404
+        if registration["cancelled"]:
+            connection.close()
+            return "Event cancelled", 400
         try:
             start_time = datetime.strptime(
                 f"{registration['date']} {registration['time'].split('-')[0].strip()}",
@@ -1145,7 +1186,7 @@ def organiser_attendance():
     csrf()  # Token for the extra-effort points form
     # Show every event, including future events and those without registrations
     events = connection.execute("""
-        SELECT id, name, date, time, location FROM events
+        SELECT id, name, date, time, location, cancelled FROM events
         WHERE organiser_id = ? OR ? = 1
         ORDER BY date DESC, time DESC, id DESC
     """, (organiser_id, organiser["is_admin"])).fetchall()
@@ -1173,7 +1214,7 @@ def organiser_attendance():
         event_groups.append({
             **dict(event),
             "registrations": by_event.get(event["id"], []),
-            "can_confirm": start_time <= datetime.now() or event["id"] in simulated,
+            "can_confirm": not event["cancelled"] and (start_time <= datetime.now() or event["id"] in simulated),
             "simulated": event["id"] in simulated
         })
 
