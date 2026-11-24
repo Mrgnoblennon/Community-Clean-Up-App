@@ -1825,3 +1825,23 @@ fieldset.event-card legend {
 .rewards-history{border-top:1px solid #dce8df;padding:18px 0;margin-top:25px}
 .rewards-history p{padding:8px 0}.rewards-footer{margin:35px 0}
 .rewards-auth{max-width:520px}.rewards-auth .reward-card{padding:30px}
+
+/* Keep account shortcut beside the logo; navigation has its own row. */
+.home-header, .explore-page .home-header, .shared-site-header, .details-header {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    align-items: center;
+    gap: 12px 20px;
+}
+.home-header > .home-brand, .shared-site-header > .home-brand, .details-header > .details-brand {
+    grid-column: 1; grid-row: 1; justify-self: start;
+}
+.home-header > .home-profile, .shared-site-header > .home-profile, .details-header > .details-account {
+    grid-column: 2; grid-row: 1; justify-self: end; width: auto; white-space: nowrap; margin: 0;
+}
+.home-header > nav, .explore-page .home-header > nav, .shared-site-header > nav, .details-header > nav {
+    grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; margin: 0;
+}
+.home-header > nav a, .shared-site-header > nav a, .details-header > nav a {
+    font-size: .9rem; padding: 8px 12px; white-space: nowrap;
+}
