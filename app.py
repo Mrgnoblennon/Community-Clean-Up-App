@@ -1471,6 +1471,44 @@ def edit_event(event_id):
             connection.execute("INSERT INTO event_change_notifications(event_id,email,message) SELECT ?,LOWER(email),? FROM registrations WHERE event_id=? GROUP BY LOWER(email)",(event_id,notice,event_id))
         return redirect(url_for("event_details",event_id=event_id))
 
+
+# Demo donations: no payment processing or card data.
+with sqlite3.connect("instance/cleanup.db") as connection:
+    connection.execute("""CREATE TABLE IF NOT EXISTS donations (
+        id INTEGER PRIMARY KEY, amount_cents INTEGER NOT NULL CHECK(amount_cents>0),
+        donor_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        submission_token TEXT UNIQUE NOT NULL)""")
+
+@app.route("/donations", methods=["GET","POST"])
+def donations():
+    from rewards import verify_csrf
+    from decimal import Decimal, InvalidOperation
+    if request.method == "POST":
+        verify_csrf()
+        try:
+            amount = Decimal(request.form.get("amount",""))
+            if not amount.is_finite() or not Decimal("1") <= amount <= Decimal("10000") or amount != amount.quantize(Decimal("0.01")):
+                raise ValueError
+            cents = int(amount*100)
+        except (InvalidOperation,ValueError):
+            return "Enter a donation between $1 and $10,000 with at most two decimal places.",400
+        token = request.form.get("submission_token","")
+        if not token or token != session.get("donation_token"):
+            return "Please reload the donations page before submitting.",400
+        name = "Anonymous" if request.form.get("anonymous") else request.form.get("name","").strip()[:100] or "Anonymous"
+        with sqlite3.connect("instance/cleanup.db") as connection:
+            connection.execute("INSERT OR IGNORE INTO donations(amount_cents,donor_name,submission_token) VALUES(?,?,?)",(cents,name,token))
+            saved = connection.execute("SELECT amount_cents FROM donations WHERE submission_token=?",(token,)).fetchone()
+        session["last_donation"] = saved[0]
+        session.pop("donation_token",None)
+        return redirect(url_for("donations",confirmed=1))
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        total,count = connection.execute("SELECT COALESCE(SUM(amount_cents),0),COUNT(*) FROM donations").fetchone()
+    if "donation_token" not in session:
+        session["donation_token"] = secrets.token_urlsafe(32)
+    confirmed = session.get("last_donation") if request.args.get("confirmed") else None
+    return render_template("donations.html",total=total,count=count,confirmed=confirmed,token=csrf(),submission_token=session["donation_token"])
+
 from rewards import register_reward_routes
 register_reward_routes(app)
 
