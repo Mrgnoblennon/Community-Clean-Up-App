@@ -53,7 +53,7 @@
             <div class="explore-map-legend" aria-label="Map marker legend">
                 <span><i class="legend-dot legend-available"></i> Available</span>
                 <span><i class="legend-dot legend-full"></i> Fully booked</span>
-                <span><i class="legend-dot legend-past"></i> Past event</span>
+                <span><i class="legend-dot legend-past"></i> Past event / Cancelled</span>
             </div>
         </div>
     </section>
@@ -110,6 +110,7 @@
             {% for event in events %}
             <article class="event-card explore-event-card"
                      data-id="{{ event.id }}"
+                     data-cancelled="{{ event.cancelled }}"
                      data-date="{{ event.date }}"
                      data-time="{{ event.time }}"
                      data-registered="{{ event.registered }}"
@@ -179,6 +180,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     function getEventStatus(card) {
         const spacesLeft = Math.max(0, Number(card.dataset.capacity) - Number(card.dataset.registered));
+        if (card.dataset.cancelled === '1') return {type:'cancelled', label:'Cancelled', color:'#666666', spacesLeft:0};
         if (getStartDate(card) <= new Date()) {
             return { type: 'past', label: 'Past Event', color: '#888888', spacesLeft };
         }
@@ -230,7 +232,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const warning = document.createElement('p');
             warning.className = 'popup-warning';
             warning.setAttribute('role', 'alert');
-            warning.textContent = status.type === 'past'
+            warning.textContent = status.type === 'cancelled' ? 'This event has been cancelled.' : status.type === 'past'
                 ? 'Registration unavailable: this event has already started or finished.'
                 : 'Registration unavailable: this event is fully booked.';
             popup.appendChild(warning);
@@ -277,7 +279,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 (statusFilter.value === 'past' && isPast) ||
                 (statusFilter.value === 'upcoming' && !isPast);
             const matchesAvailability = availabilityFilter.value === 'all' ||
-                (availabilityFilter.value === 'available' && !isFull) ||
+                (availabilityFilter.value === 'available' && !isFull && status.type !== 'cancelled') ||
                 (availabilityFilter.value === 'full' && isFull);
             const matchesDate = !dateFilter.value || card.dataset.date === dateFilter.value;
             const visible = matchesSearch && matchesStatus && matchesAvailability && matchesDate;
