@@ -42,6 +42,7 @@
         <div class="details-layout">
             <!-- event information -->
             <div class="details-main">
+{% if current_user and current_user.role == "organiser" and current_user.id == event.organiser_id and not event.cancelled %}<a class="btn" href="{{ url_for('edit_event',event_id=event.id) }}">Edit Event</a>{% endif %}
 {% if current_user and current_user.role == "organiser" and current_user.id == event.organiser_id and not event.cancelled and not event_has_started %}
 <section class="details-panel"><h2>Cancel Event</h2><form method="post" action="{{ url_for('cancel_event', event_id=event.id) }}">
 <input type="hidden" name="csrf_token" value="{{ cancellation_token }}">
@@ -58,7 +59,7 @@
 
                 <section class="details-panel">
                     <h2>🌿 About This Clean-Up</h2>
-                    <p class="details-description">{{ event.description or 'No description provided.' }}</p>
+                    <p class="details-description">{{ event.description or 'No description provided.' }}</p><p>Equipment: {{ event.equipment or "Not specified" }}</p><p>Safety: {{ event.safety_instructions or "Not specified" }}</p>{% if event.meeting_point %}<p>Meeting point: {{ event.meeting_point }}</p>{% endif %}{% if event.contact_details %}<p>Contact: {{ event.contact_details }}</p>{% endif %}
                 </section>
 
                 <!-- event capacity -->

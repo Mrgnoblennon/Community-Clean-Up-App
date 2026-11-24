@@ -47,6 +47,7 @@
         {% if my_events %}
 
             {% for event in my_events %}
+{% if event.cancelled %}<p role="alert">Event cancelled: {{ event.cancellation_reason }}</p>{% elif event.change_notice %}<p role="status">{{ event.change_notice }}</p>{% endif %}
                 <section class="event-card">
 
                     <h2>{{ event.event_name }}</h2>

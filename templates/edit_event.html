@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Edit Event{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endblock %}
+{% block content %}<main class="container standard-page"><h1>Edit Event</h1><p>{{ event.name }}</p>{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+<form method="post"><input type="hidden" name="csrf_token" value="{{ token }}">
+{% if not started %}
+<label for="name">Event name</label><input id="name" name="name" value="{{ event.name }}" required>
+<label for="location">Location</label><input id="location" name="location" value="{{ event.location }}" required>
+<div id="edit-map" style="height:320px;border-radius:12px"></div><p>Click the map to change the location.</p>
+<input type="hidden" id="lat" name="latitude" value="{{ event.latitude }}"><input type="hidden" id="lng" name="longitude" value="{{ event.longitude }}">
+<label for="date">Date</label><input type="date" id="date" name="date" value="{{ event.date }}" required>
+<label for="start_time">Start time</label><input type="time" id="start_time" name="start_time" value="{{ event.start_time }}" required>
+<label for="end_time">End time</label><input type="time" id="end_time" name="end_time" value="{{ event.end_time }}" required>
+<label for="capacity">Participant limit ({{ event.registered }} already registered)</label><input type="number" id="capacity" name="capacity" min="{{ [1,event.registered]|max }}" value="{{ event.capacity }}" required>
+<label for="description">Description</label><textarea id="description" name="description">{{ event.description or '' }}</textarea>
+<label for="equipment">Equipment</label><textarea id="equipment" name="equipment">{{ event.equipment or '' }}</textarea>
+{% else %}<p>This event has started. Only safety, meeting and contact information can be updated.</p>{% endif %}
+<label for="safety">Safety instructions</label><textarea id="safety" name="safety_instructions">{{ event.safety_instructions or '' }}</textarea>
+<label for="meeting">Meeting point</label><input id="meeting" name="meeting_point" value="{{ event.meeting_point or '' }}">
+<label for="contact">Contact details</label><input id="contact" name="contact_details" value="{{ event.contact_details or '' }}">
+<button class="btn" type="submit">Save Changes</button></form><a class="btn" href="{{ url_for('my_events') }}">Back to My Events</a></main>{% endblock %}
+{% block scripts %}{% if not started %}<script>
+const lat=document.getElementById('lat'),lng=document.getElementById('lng');const valid=lat.value!==''&&lng.value!==''&&Number.isFinite(Number(lat.value))&&Number.isFinite(Number(lng.value));const map=L.map('edit-map').setView(valid?[Number(lat.value),Number(lng.value)]:[-31.95,115.86],12);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);let marker=valid?L.marker([Number(lat.value),Number(lng.value)]).addTo(map):null;map.on('click',e=>{lat.value=e.latlng.lat;lng.value=e.latlng.lng;if(marker)marker.setLatLng(e.latlng);else marker=L.marker(e.latlng).addTo(map);});
+</script>{% endif %}{% endblock %}
