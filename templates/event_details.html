@@ -33,6 +33,7 @@
             <div>
                 <span class="details-eyebrow">🌱 COMMUNITY CLEAN-UP</span>
                 <h1>{{ event.name }}</h1>
+                {% if event.cancelled %}<p role="alert"><strong>Cancelled:</strong> {{ event.cancellation_reason }}</p>{% endif %}
                 <p>Every helping hand makes a difference.</p>
             </div>
             <div class="details-hero-art" aria-hidden="true">🌎<span>✨</span></div>
@@ -41,6 +42,11 @@
         <div class="details-layout">
             <!-- event information -->
             <div class="details-main">
+{% if current_user and current_user.role == "organiser" and current_user.id == event.organiser_id and not event.cancelled and not event_has_started %}
+<section class="details-panel"><h2>Cancel Event</h2><form method="post" action="{{ url_for('cancel_event', event_id=event.id) }}">
+<input type="hidden" name="csrf_token" value="{{ cancellation_token }}">
+<label for="reason">Cancellation reason</label><textarea id="reason" name="reason" maxlength="1000" required></textarea>
+<label><input type="checkbox" name="confirm" value="yes" required> I confirm cancellation</label><button class="btn" type="submit">Cancel Event</button></form></section>{% endif %}
                 <section class="details-panel">
                     <h2>📍 Event Details</h2>
                     <div class="details-info-grid">
@@ -59,7 +65,9 @@
                 <section class="details-panel">
                     <div class="details-capacity-heading">
                         <h2>👥 Community Spots</h2>
-                        {% if event_has_started %}
+                        {% if event.cancelled %}
+                    <p role="alert"><strong>Cancelled — registration closed.</strong></p>
+                {% elif event_has_started %}
                             <span class="details-status details-status-past">Started / Past</span>
                         {% elif spaces_left == 0 %}
                             <span class="details-status details-status-full">Fully Booked</span>
@@ -79,7 +87,9 @@
 
             <!-- registration -->
             <aside class="details-panel details-join-panel">
-                {% if event_has_started %}
+                {% if event.cancelled %}
+                    <p role="alert"><strong>Cancelled — registration closed.</strong></p>
+                {% elif event_has_started %}
                     <span class="details-join-icon">🌿</span>
                     <h2>This Clean-Up Has Started</h2>
                     <p>Registration for this event is now closed. Thanks for your interest in helping the community!</p>
