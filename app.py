@@ -246,14 +246,15 @@ def join_event(event_id):
 
         cursor.execute("""
             INSERT INTO registrations
-                (event_id, name, email, attendee_count, user_id)
-            VALUES (?, ?, ?, ?, ?)
+                (event_id, name, email, attendee_count, user_id, phone)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             event_id,
             name,
             email,
             attendee_count,
-            registration_user_id
+            registration_user_id,
+            request.form.get("phone", "").strip()[:40]
         ))
 
 
@@ -1105,6 +1106,7 @@ def organiser_attendance():
             connection.close()
             return "Invalid request", 400
 
+        connection.execute("BEGIN IMMEDIATE")
         action = request.form.get("action", "attendance")
         if action == "simulate":
             if not test_mode:
@@ -1116,8 +1118,8 @@ def organiser_attendance():
                 connection.close()
                 return "Invalid event", 400
             exists = connection.execute(
-                "SELECT 1 FROM events WHERE id = ? AND (organiser_id = ? OR ? = 1)",
-                (event_id, organiser_id, organiser["is_admin"])
+                "SELECT 1 FROM events WHERE id = ? AND (organiser_id = ?)",
+                (event_id, organiser_id)
             ).fetchone()
             if not exists:
                 connection.close()
@@ -1143,8 +1145,8 @@ def organiser_attendance():
             SELECT registrations.id, events.id AS event_id, events.date, events.time, events.cancelled
             FROM registrations JOIN events ON events.id = registrations.event_id
             WHERE registrations.id = ?
-              AND (events.organiser_id = ? OR ? = 1)
-        """, (registration_id, organiser_id, organiser["is_admin"])).fetchone()
+              AND (events.organiser_id = ?)
+        """, (registration_id, organiser_id)).fetchone()
         if not registration:
             connection.close()
             return "Registration not found", 404
@@ -1172,8 +1174,8 @@ def organiser_attendance():
             WHERE id = ?
         """, (
             attended,
-            datetime.now().isoformat(timespec="seconds") if attended else None,
-            organiser_id if attended else None,
+            datetime.now().isoformat(timespec="seconds") if request.form.get("action") != "reset" else None,
+            organiser_id if request.form.get("action") != "reset" else None,
             registration_id
         ))
         if previous["attended"] != attended and previous["user_id"]:
@@ -1181,22 +1183,28 @@ def organiser_attendance():
             reconcile_monthly_bonus(connection, previous["user_id"], registration["date"][:7])
         connection.commit()
         connection.close()
-        return redirect(url_for("organiser_attendance", updated=1))
+        return redirect(url_for("organiser_attendance", updated=1, event_id=registration["event_id"]))
 
     csrf()  # Token for the extra-effort points form
     # Show every event, including future events and those without registrations
     events = connection.execute("""
-        SELECT id, name, date, time, location, cancelled FROM events
-        WHERE organiser_id = ? OR ? = 1
+        SELECT id, name, date, time, location, cancelled, capacity, registered FROM events
+        WHERE organiser_id = ?
         ORDER BY date DESC, time DESC, id DESC
-    """, (organiser_id, organiser["is_admin"])).fetchall()
+    """, (organiser_id,)).fetchall()
     rows = connection.execute("""
         SELECT id AS registration_id, event_id, name AS participant_name,
-               email, attendee_count, attended, user_id
+               email, attendee_count, attended, user_id, phone, attendance_marked_at
         FROM registrations
-        WHERE event_id IN (SELECT id FROM events WHERE organiser_id = ? OR ? = 1)
+        WHERE event_id IN (SELECT id FROM events WHERE organiser_id = ?)
         ORDER BY id
-    """, (organiser_id, organiser["is_admin"])).fetchall()
+    """, (organiser_id,)).fetchall()
+    selected_id = request.args.get("event_id", type=int)
+    if selected_id is not None:
+        events = [event for event in events if event["id"] == selected_id]
+        if not events:
+            connection.close()
+            return "Event not found", 404
     connection.close()
     by_event = {}
     for row in rows:
@@ -1319,6 +1327,11 @@ def admin_dashboard():
     return render_template("admin.html", organisers=organisers, businesses=businesses, message=message)
 
 
+
+# US-08 optional contact details
+with sqlite3.connect("instance/cleanup.db") as connection:
+    if "phone" not in {row[1] for row in connection.execute("PRAGMA table_info(registrations)")}:
+        connection.execute("ALTER TABLE registrations ADD COLUMN phone TEXT")
 
 # US-07 litter reports
 with sqlite3.connect("instance/cleanup.db") as connection:

@@ -9,7 +9,7 @@
             <a href="{{ url_for('participant_dashboard') }}"{% if request.endpoint == 'participant_dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
         {% else %}
             <a href="{{ url_for('my_events') }}">My Events</a>
-            <a href="{{ url_for('organiser_attendance') }}"{% if request.endpoint == 'organiser_attendance' %} aria-current="page"{% endif %}>Attendance</a>
+            <a href="{{ url_for('organiser_attendance') }}"{% if request.endpoint == 'organiser_attendance' %} aria-current="page"{% endif %}>Registrations</a>
             <a href="{{ url_for('create_event') }}"{% if request.endpoint == 'create_event' %} aria-current="page"{% endif %}>Create Event</a>
         {% endif %}
         {% if current_user.is_admin %}
