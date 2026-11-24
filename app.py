@@ -1319,6 +1319,65 @@ def admin_dashboard():
     return render_template("admin.html", organisers=organisers, businesses=businesses, message=message)
 
 
+
+# US-07 litter reports
+with sqlite3.connect("instance/cleanup.db") as connection:
+    connection.execute("""CREATE TABLE IF NOT EXISTS litter_reports (
+        id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, latitude REAL NOT NULL,
+        longitude REAL NOT NULL, description TEXT NOT NULL, photo BLOB,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
+
+@app.route("/my-events")
+def my_events():
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        connection.row_factory = sqlite3.Row
+        uid = session.get("organiser_id")
+        if not connection.execute("SELECT 1 FROM users WHERE id=? AND role='organiser' AND approved=1",(uid,)).fetchone():
+            return redirect(url_for("organiser_login"))
+        rows = connection.execute("SELECT * FROM events WHERE organiser_id=? ORDER BY date DESC,time DESC",(uid,)).fetchall()
+    return render_template("my_events.html", events=rows)
+
+@app.route("/litter", methods=["GET","POST"])
+def litter_reports():
+    from rewards import verify_csrf
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        connection.row_factory = sqlite3.Row
+        uid = session.get("participant_id") or session.get("organiser_id")
+        user = connection.execute("SELECT id FROM users WHERE id=? AND (role='participant' OR (role='organiser' AND approved=1))",(uid,)).fetchone()
+        if request.method == "POST":
+            if not user:
+                return "Login required", 403
+            verify_csrf()
+            try:
+                lat = float(request.form.get("latitude",""))
+                lng = float(request.form.get("longitude",""))
+                if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                    raise ValueError
+            except ValueError:
+                return "Select a valid map location", 400
+            description = request.form.get("description","").strip()
+            if len(description)>2000:
+                return "Description too long",400
+            upload = request.files.get("photo")
+            photo = None
+            if upload and upload.filename:
+                photo = upload.stream.read(5*1024*1024+1)
+                if len(photo)>5*1024*1024 or not photo.startswith(b"\xff\xd8\xff"):
+                    return "Upload a JPEG photo under 5 MB",400
+            connection.execute("INSERT INTO litter_reports(user_id,latitude,longitude,description,photo) VALUES(?,?,?,?,?)",(uid,lat,lng,description,photo))
+            return redirect(url_for("litter_reports"))
+        reports = [dict(r) for r in connection.execute("SELECT id,latitude,longitude,description,created_at,photo IS NOT NULL AS has_photo FROM litter_reports ORDER BY id DESC")]
+    return render_template("litter_reports.html",reports=reports,can_report=bool(user),token=csrf())
+
+@app.route("/litter/<int:report_id>/photo")
+def litter_photo(report_id):
+    from flask import Response
+    with sqlite3.connect("instance/cleanup.db") as connection:
+        row = connection.execute("SELECT photo FROM litter_reports WHERE id=?",(report_id,)).fetchone()
+    if not row or not row[0]:
+        return "Photo not found",404
+    return Response(row[0],mimetype="image/jpeg",headers={"X-Content-Type-Options":"nosniff"})
+
 from rewards import register_reward_routes
 register_reward_routes(app)
 
