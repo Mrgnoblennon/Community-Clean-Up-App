@@ -47,6 +47,9 @@
             margin: 12px 0 20px;
         }
 
+        .create-footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:24px; }
+        .create-footer form { margin:0; padding:0; background:none; box-shadow:none; border:0; width:auto; }
+        .create-footer .btn { width:auto; min-width:140px; margin:0; }
         .form-actions {
             display: flex;
             flex-wrap: wrap;
@@ -252,6 +255,8 @@
 
     </form>
 
+    <div class="create-footer">
+    <a href="{{ url_for('my_events') }}" class="btn">My Events</a>
     <!-- ORGANISER LOGOUT -->
     <form action="{{ url_for('organiser_logout') }}"
           method="POST">
@@ -265,6 +270,7 @@
     <a href="{{ url_for('home') }}" class="btn">
         Back to Home
     </a>
+    </div>
 
 </main>
 {% endblock %}
