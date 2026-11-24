@@ -1361,13 +1361,24 @@ def litter_reports():
             upload = request.files.get("photo")
             photo = None
             if upload and upload.filename:
-                photo = upload.stream.read(5*1024*1024+1)
-                if len(photo)>5*1024*1024 or not photo.startswith(b"\xff\xd8\xff"):
-                    return "Upload a JPEG photo under 5 MB",400
+                photo = upload.stream.read(10*1024*1024+1)
+                if len(photo)>10*1024*1024:
+                    return "Photo exceeds 10 MB. Please choose a smaller image.",400
+                if not litter_image_type(photo):
+                    return "Unsupported image format. Choose JPEG, PNG or WebP.",400
             connection.execute("INSERT INTO litter_reports(user_id,latitude,longitude,description,photo) VALUES(?,?,?,?,?)",(uid,lat,lng,description,photo))
             return redirect(url_for("litter_reports"))
         reports = [dict(r) for r in connection.execute("SELECT id,latitude,longitude,description,created_at,photo IS NOT NULL AS has_photo FROM litter_reports ORDER BY id DESC")]
     return render_template("litter_reports.html",reports=reports,can_report=bool(user),token=csrf())
+
+def litter_image_type(photo):
+    if photo.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if photo.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if photo[:4] == b"RIFF" and photo[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 @app.route("/litter/<int:report_id>/photo")
 def litter_photo(report_id):
@@ -1376,7 +1387,7 @@ def litter_photo(report_id):
         row = connection.execute("SELECT photo FROM litter_reports WHERE id=?",(report_id,)).fetchone()
     if not row or not row[0]:
         return "Photo not found",404
-    return Response(row[0],mimetype="image/jpeg",headers={"X-Content-Type-Options":"nosniff"})
+    return Response(row[0],mimetype=litter_image_type(row[0]) or "application/octet-stream",headers={"X-Content-Type-Options":"nosniff"})
 
 from rewards import register_reward_routes
 register_reward_routes(app)
