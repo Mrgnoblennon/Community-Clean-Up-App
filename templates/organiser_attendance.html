@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Track Attendance | Cleaning Up Communities{% endblock %}
+{% block title %}Event Registrations | Cleaning Up Communities{% endblock %}
 {% block content %}
 <main class="container attendance-page">
     <section class="attendance-hero">
         <span>🌱 ORGANISER TOOLS</span>
-        <h1>Track Attendance</h1>
+        <h1>Event Registrations</h1>
         <p>Review all clean-ups. Attendance can be confirmed once an event starts.</p>
-        <a href="{{ url_for('create_event') }}">← Create Event</a>
+        <a href="{{ url_for('my_events') }}">← My Events</a>
     </section>
 
     {% if request.args.get('updated') %}
@@ -24,9 +24,9 @@
                     <span class="attendance-tag">{{ event.date }} · {{ event.time }}</span>
                     <h2>{{ event.name }}</h2>
                     <p>📍 {{ event.location }}</p>
-                    <p>{{ event.registrations | length }} booking(s) · {{ 'Started' if event.can_confirm else 'Upcoming' }}</p>
+                    <p>{{ event.registrations | length }} booking(s) · {{ event.registered }} / {{ event.capacity }} registered · {{ [0,event.capacity-event.registered]|max if not event.cancelled else 0 }} spaces available · {{ 'Cancelled' if event.cancelled else ('Started' if event.can_confirm else 'Upcoming') }}</p>
                 </div>
-                {% if test_mode %}
+                {% if test_mode and not event.cancelled %}
                     <form method="POST" action="{{ url_for('organiser_attendance') }}">
                         <input type="hidden" name="attendance_token" value="{{ attendance_token }}">
                         <input type="hidden" name="action" value="simulate">
@@ -40,7 +40,7 @@
                     <article class="attendance-card">
                         <div>
                             <h3>{{ registration.participant_name }}</h3>
-                            <p>{{ registration.email }}</p>
+                            <p>{{ registration.email }}</p><p>Phone: {{ registration.phone or 'Not provided' }}</p>
                             <p>👥 {{ registration.attendee_count }} reserved place(s)</p>
                             {% if registration.user_id %}
                                 <p class="attendance-note">Linked participant account</p>
@@ -49,15 +49,17 @@
                             {% endif %}
                         </div>
                         <div class="attendance-control">
-                            <span class="attendance-status {{ 'is-confirmed' if registration.attended else '' }}">{{ '✓ Attended' if registration.attended else 'Not confirmed' }}</span>
+                            <span class="attendance-status {{ 'is-confirmed' if registration.attended else '' }}">{{ '✓ Attended' if registration.attended else ('Absent' if registration.attendance_marked_at else 'Not marked') }}</span>
                             {% if event.can_confirm %}
                                 <form method="POST" action="{{ url_for('organiser_attendance') }}">
                                     <input type="hidden" name="attendance_token" value="{{ attendance_token }}">
                                     <input type="hidden" name="registration_id" value="{{ registration.registration_id }}">
-                                    <input type="hidden" name="attended" value="{{ 0 if registration.attended else 1 }}">
-                                    <button class="btn" type="submit">{{ 'Undo Attendance' if registration.attended else 'Confirm Attendance' }}</button>
+                                    <input type="hidden" name="attended" value="1">
+                                    <button class="btn" type="submit">Mark Attended</button>
                                 </form>
-                                {% if registration.attended and registration.user_id %}
+                                <form method="POST" action="{{ url_for('organiser_attendance') }}"><input type="hidden" name="attendance_token" value="{{ attendance_token }}"><input type="hidden" name="registration_id" value="{{ registration.registration_id }}"><input type="hidden" name="attended" value="0"><button class="btn" type="submit">Mark Absent</button></form>
+<form method="POST" action="{{ url_for('organiser_attendance') }}"><input type="hidden" name="attendance_token" value="{{ attendance_token }}"><input type="hidden" name="registration_id" value="{{ registration.registration_id }}"><input type="hidden" name="attended" value="0"><input type="hidden" name="action" value="reset"><button class="btn" type="submit">Reset Attendance</button></form>
+{% if registration.attended and registration.user_id %}
                                 <form method="POST" action="{{ url_for('award_extra_points') }}">
                                     <input type="hidden" name="csrf_token" value="{{ session.get('rewards_csrf', '') }}">
                                     <input type="hidden" name="registration_id" value="{{ registration.registration_id }}">
